@@ -1,0 +1,48 @@
+<script>
+import {
+  withHooks,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useInstance,
+  useShow,
+  usePullDownRefresh,
+  useShareAppMessage,
+  useShareTimeline,
+  useAddToFavorites,
+  usePageScroll,
+  useTabItemTap,
+  useReachBottom,
+  useParams
+} from "@wxa/hooks";
+import { router } from "@wxa/core";
+
+withHooks(
+  () => {
+    return {
+      data: {},
+      methods: {}
+    };
+  },
+  {
+    properties: {}
+  }
+);
+</script>
+
+<config>
+{
+    "navigationBarTitleText": "首页",
+    "enablePullDownRefresh" : true,
+    "usingComponents":{
+    }
+}
+</config>
+
+<template>
+  <view class="page" wx:if="{{show}}"></view>
+</template>
+
+<style>
+</style>

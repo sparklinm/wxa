@@ -1,0 +1,99 @@
+<script>
+import {
+  withHooks, useState, useEffect, useMemo, 
+  useCallback, useInstance, useShow, usePullDownRefresh, 
+  useShareAppMessage,useShareTimeline,useAddToFavorites,usePageScroll,useTabItemTap,
+  useReachBottom,useRelations,
+  useReady
+} from '@wxa/hooks';
+
+function throttle(fn, threshhold) {
+ var timeout
+ var start = new Date;
+ var threshhold = threshhold || 160
+ return function () {
+
+ var context = this, args = arguments, curr = new Date() - 0
+ 
+ clearTimeout(timeout)//总是干掉事件回调
+ if(curr - start >= threshhold){ 
+     console.log("now", curr, curr - start)//注意这里相减的结果，都差不多是160左右
+     fn.apply(context, args) //只执行一部分方法，这些方法是在某个时间段内执行一次
+     start = curr
+ }else{
+ //让方法在脱离事件后也能执行一次
+     timeout = setTimeout(function(){
+        fn.apply(context, args) 
+     }, threshhold);
+    }
+  }
+}
+
+withHooks(()=>{
+    let instance = useInstance(null)
+    useEffect(()=>{
+        // console.log('component instance', instance);
+    }, [])
+
+
+
+
+    // console.log('1');
+    // console.log('BOwnerComponent',instance.selectOwnerComponent());
+
+
+
+    useRelations({
+        './custom-li': {
+            type: 'child', // 关联的目标节点应为子节点
+            linked: function(target) {
+                // 每次有custom-li被插入时执行，target是该节点实例对象，触发在该节点attached生命周期之后
+            },
+            linkChanged: function(target) {
+                // 每次有custom-li被移动后执行，target是该节点实例对象，触发在该节点moved生命周期之后
+            },
+            unlinked: function(target) {
+                // 每次有custom-li被移除时执行，target是该节点实例对象，触发在该节点detached生命周期之后
+            }
+        }
+    })
+
+    return {
+        data: {
+   
+        },
+        methods: {
+          
+        }
+    }
+}, {
+    properties: {
+        btnText: {
+            type: String,
+            value: 'Add'
+        },
+        value: Number
+    }
+},
+    {
+        relations: [['./custom-li', 'child']]
+    }
+);
+</script>
+
+<config>
+{
+    "navigationBarTitleText": "组件",
+    "component" : true
+}
+</config>
+
+<template>
+<view class="component">
+    {{btnText}}
+</view>
+</template>
+
+<style>
+
+</style>

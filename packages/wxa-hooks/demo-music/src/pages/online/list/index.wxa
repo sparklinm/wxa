@@ -1,0 +1,107 @@
+<script>
+import {
+    withHooks,
+    useState,
+    useEffect,
+    useMemo,
+    useCallback,
+    useInstance,
+    useShow,
+    usePullDownRefresh,
+    useShareAppMessage,
+    useShareTimeline,
+    useAddToFavorites,
+    usePageScroll,
+    useTabItemTap,
+    useReachBottom,
+    useParams
+} from "@wxa/hooks";
+import { getSongList } from "../../../service.js";
+
+withHooks(
+    () => {
+        let [bgImg, setBgImg] = useState("");
+        let [songList, setSongList] = useState([]);
+        let [loading, setLoading] = useState(true);
+        let [currentSong, setCurrentSong] = useState({});
+
+        function playMusic(e) {
+            setCurrentSong(e.detail.song);
+        }
+
+        useEffect(async () => {
+            let options = useParams();
+            let res = await getSongList(options.type);
+            setSongList(res.list);
+            setBgImg(res.covers[0]);
+            setLoading(false);
+        }, []);
+        return {
+            data: { bgImg, songList, loading, currentSong },
+            methods: {
+                playMusic
+            }
+        };
+    },
+    {
+        properties: {}
+    }
+);
+</script>
+
+<config>
+{
+    "navigationBarTitleText": "列表",
+    "enablePullDownRefresh" : true,
+    "usingComponents":{
+      "song-item": "../../../components/song-item",
+      "player": "../../../components/player"
+    }
+}
+</config>
+
+
+<template>
+    <scroll-view
+        class="container"
+        scroll-y="true"
+        bindscrolltolower="nextpage"
+    >
+        <view class="board">
+            <view class="img-bg">
+                <image src="{{bgImg}}" />
+            </view>
+        </view>
+        <view class="songlist">
+            <block
+                wx:for="{{songList}}"
+                wx:key="{{item.song_id}}"
+            >
+                <song-item
+                    song="{{item}}"
+                    bindplay="playMusic"
+                >
+            </block>
+        </view>
+        <loading hidden="{{!loading}}">
+            加载中...
+        </loading>
+    </scroll-view>
+    <player
+        song="{{currentSong}}"
+        songList="{{songList}}"
+    />
+</template>
+
+<style lang="scss">
+.board image {
+    width: 100%;
+    height: 300px;
+    border-bottom: 1px solid #eee;
+}
+
+.container {
+    padding: 40rpx;
+    box-sizing: border-box;
+}
+</style>

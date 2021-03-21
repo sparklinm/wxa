@@ -1,0 +1,85 @@
+<script>
+import {
+    withHooks,
+    useState,
+    useEffect,
+    useMemo,
+    useCallback,
+    useInstance,
+    useShow,
+    usePullDownRefresh,
+    useShareAppMessage,
+    useShareTimeline,
+    useAddToFavorites,
+    usePageScroll,
+    useTabItemTap,
+    useReachBottom,
+    useParams,
+    useEvent
+} from "@wxa/hooks";
+import { router } from "@wxa/core";
+
+withHooks(
+    ({ song }) => {
+        let emitPlay = useEvent('play');
+
+        function handleTap() {
+          emitPlay({song})
+        }
+
+        return {
+            data: { song },
+            methods: {
+              handleTap
+            }
+        };
+    },
+    {
+        properties: {
+            song: {
+                type: Object,
+                value: {}
+            }
+        },
+        options: {
+            addGlobalClass: true
+        }
+    }
+);
+</script>
+
+<config>
+{
+    "component": true,
+    "usingComponents":{
+    }
+}
+</config>
+
+<template>
+    <view
+        class="songitem"
+        bindtap="handleTap"
+    >
+        <navigator
+            redirect
+            url="/pages/local/play?songid={{song.song_id}}"
+            class="song-play"
+        >
+            <image src="/assets/images/play.png" />
+        </navigator>
+        <navigator
+            url="/pages/local/play?songid={{song.song_id}}"
+            class="song-detail"
+        >
+            <view class="song-title">{{song.title}}</view>
+            <view class="song-subtitle">{{song.author}} - {{song.style}}</view>
+        </navigator>
+    </view>
+</template>
+
+<style lang="scss">
+.song-detail {
+    margin-left: 20rpx;
+}
+</style>

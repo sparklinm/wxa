@@ -1,0 +1,77 @@
+<script>
+import {
+    withHooks,
+    useState,
+    useEffect,
+    useMemo,
+    useCallback,
+    useInstance,
+    useShow,
+    usePullDownRefresh,
+    useShareAppMessage,
+    useShareTimeline,
+    useAddToFavorites,
+    usePageScroll,
+    useTabItemTap,
+    useReachBottom,
+    useParams
+} from "@wxa/hooks";
+import { router } from "@wxa/core";
+
+withHooks(
+    ({ url, text }) => {
+        return {
+            data: { url, text },
+            methods: {}
+        };
+    },
+    {
+        properties: {
+            url: {
+                type: String,
+                value: ""
+            },
+            text: {
+                type: String,
+                value: ""
+            }
+        },
+        options: {
+            addGlobalClass: true
+        }
+    }
+);
+</script>
+
+<config>
+{
+    "component": true,
+    "usingComponents":{
+    }
+}
+</config>
+
+<template>
+    <navigator
+        url="{{url}}"
+        class="text"
+    >{{text}}</navigator>
+    <view class="arrow"></view>
+</template>
+
+<style lang="scss">
+.text {
+    padding-left: 1rem;
+}
+.arrow {
+    width: 10px;
+    height: 10px;
+    border-top: 2px solid #999;
+    border-right: 2px solid #999;
+    /*float: right;*/
+    position: absolute;
+    right: 20px;
+    transform: rotate(45deg);
+    top: 20px;
+}
+</style>

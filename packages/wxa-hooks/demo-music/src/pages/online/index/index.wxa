@@ -1,0 +1,90 @@
+<script>
+import {
+    withHooks,
+    useState,
+    useEffect,
+    useMemo,
+    useCallback,
+    useInstance,
+    useShow,
+    usePullDownRefresh,
+    useShareAppMessage,
+    useShareTimeline,
+    useAddToFavorites,
+    usePageScroll,
+    useTabItemTap,
+    useReachBottom,
+    useParams
+} from "@wxa/hooks";
+import { getSongCategory } from "../../../service.js";
+
+const LIST_URL = "/pages/online/list/index";
+
+withHooks(
+    () => {
+        let [ranks, setRanks] = useState([]);
+        let [loading, setLoading] = useState([]);
+        useEffect(async () => {
+            let res = await getSongCategory();
+            res.forEach(item => {
+                item.url = `${LIST_URL}?type=${item.type}`;
+            });
+            setRanks(res);
+            setLoading(false);
+        }, []);
+
+        return {
+            data: { ranks, loading },
+            methods: {}
+        };
+    },
+    {
+        properties: {}
+    }
+);
+</script>
+
+<config>
+{
+    "navigationBarTitleText": "歌曲",
+    "enablePullDownRefresh" : true,
+    "usingComponents":{
+      "custom-navigator": "../../../components/custom-navigator"
+    }
+}
+</config>
+
+<template>
+    <view class="container">
+        <view class="rank-list">
+            <view
+                class="rank-item"
+                wx:for="{{ranks}}"
+                wx:key="{{item.type}}"
+            >
+                <custom-navigator
+                    url="{{item.url}}"
+                    text="{{item.text}}"
+                />
+            </view>
+        </view>
+        <loading hidden="{{!loading}}">
+            加载中...
+        </loading>
+    </view>
+</template>
+
+<style lang="scss">
+.rank-list {
+    width: 100%;
+    /*padding: 0.5rem;*/
+}
+.rank-item {
+    width: 100%;
+    text-align: left;
+    height: 3rem;
+    line-height: 3rem;
+    border-bottom: 1px solid #eee;
+    position: relative;
+}
+</style>

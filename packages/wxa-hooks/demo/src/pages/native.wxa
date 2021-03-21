@@ -1,0 +1,97 @@
+<script>
+
+function throttle(fn, threshhold) {
+  var timeout;
+  var start = new Date();
+  var threshhold = threshhold || 160;
+  return function() {
+    var context = this,
+      args = arguments,
+      curr = new Date() - 0;
+
+    clearTimeout(timeout); //总是干掉事件回调
+    if (curr - start >= threshhold) {
+      console.log("now", curr, curr - start); //注意这里相减的结果，都差不多是160左右
+      fn.apply(context, args); //只执行一部分方法，这些方法是在某个时间段内执行一次
+      start = curr;
+    } else {
+      //让方法在脱离事件后也能执行一次
+      timeout = setTimeout(function() {
+        fn.apply(context, args);
+      }, threshhold);
+    }
+  };
+}
+
+function getRandom() {
+  return Math.floor(Math.random() * 1000000);
+}
+
+function getCount(num) {
+  return num + getRandom();
+}
+
+export default class {
+  data = {
+    nums: [],
+    counts: []
+  };
+
+  onLoad() {
+    let numsLenght = 100;
+    let nums = new Array(numsLenght);
+    nums.fill(0);
+
+    let counts = new Array(numsLenght);
+    nums.forEach((item, index) => {
+      counts[index] = getCount(item);
+    });
+    this.setData({
+      nums,
+      counts
+    });
+  }
+
+  change() {
+    console.time("change");
+    let nums = this.data.nums;
+    let counts = this.data.counts;
+    nums.forEach((item, index) => {
+      nums[index] = getRandom();
+      counts[index] = getCount(nums[index]);
+    });
+
+    this.setData({
+      nums,
+      counts
+    });
+    console.timeEnd("change");
+  }
+}
+</script>
+
+<config>
+{
+    "navigationBarTitleText": "首页",
+    "enablePullDownRefresh" : true,
+    "usingComponents":{
+      "A": "../Components/A"
+    }
+}
+</config>
+
+<template>
+  <view class="page">
+    <button bindtap="change">change</button>
+
+    <view
+      class
+      wx:for="{{nums}}"
+      wx:key="*this"
+      wx:for-item="item"
+    >num:{{nums[index]}}，count:{{counts[index]}}</view>
+  </view>
+</template>
+
+<style>
+</style>

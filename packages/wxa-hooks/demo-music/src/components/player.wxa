@@ -28,7 +28,7 @@ function creatMusic(song) {
 let music = null;
 withHooks(
     ({ song }) => {
-        console.log(song);
+        console.log('playSong', song);
         let [showBtnPause, setShowBtnPause] = useState(false);
 
         music = useMemo(

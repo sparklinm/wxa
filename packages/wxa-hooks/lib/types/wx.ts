@@ -8,6 +8,8 @@ type onAddToFavorites = WechatMiniprogram.Page.ILifetime['onAddToFavorites'];
 
 type onShareTimeline = WechatMiniprogram.Page.ILifetime['onShareTimeline'];
 
+type onLoad = WechatMiniprogram.Page.ILifetime['onLoad'];
+
 type onResize = WechatMiniprogram.Page.ILifetime['onResize'];
 
 type relationFunction = WechatMiniprogram.Component.RelationOption['linked'];

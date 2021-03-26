@@ -14,7 +14,9 @@ import {
     usePageScroll,
     useTabItemTap,
     useReachBottom,
-    useParams
+    useParams,
+    useLoad,
+    useRef
 } from "@wxa/hooks";
 import { getSongList } from "../../../service.js";
 
@@ -24,18 +26,23 @@ withHooks(
         let [songList, setSongList] = useState([]);
         let [loading, setLoading] = useState(true);
         let [currentSong, setCurrentSong] = useState({});
+        let oprionsRef = useRef()
 
-        function playMusic(e) {
-            setCurrentSong(e.detail.song);
-        }
-
-        useEffect(async () => {
-            let options = useParams();
+        useLoad(async (options)=>{
+            console.log('options',options);
+            oprionsRef.current = options 
             let res = await getSongList(options.type);
             setSongList(res.list);
             setBgImg(res.covers[0]);
             setLoading(false);
-        }, []);
+        })
+        
+
+        function playMusic(e) {
+            console.log('options', oprionsRef.current);
+            setCurrentSong(e.detail.song);
+        }
+
         return {
             data: { bgImg, songList, loading, currentSong },
             methods: {

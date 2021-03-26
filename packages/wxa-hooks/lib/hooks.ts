@@ -121,6 +121,7 @@ function withHooks(
             this._$state = {};
             this._$effect = {};
             this._$useMemo = {};
+            this._$refs = {};
             this._$updated = false;
             this._$isUpdating = false;
             this._$dom = new Map();
@@ -159,7 +160,7 @@ function withHooks(
                 // console.timeEnd('setup');
             };
 
-            this._$runSetup = () => {
+            this._$deferSetup = () => {
                 if (this._$isSetting) {
                     return;
                 }
@@ -179,7 +180,6 @@ function withHooks(
             };
 
             console.log('created setup');
-            // this._$setup();
         },
         attached() {
             this._$setup();
@@ -292,8 +292,7 @@ function useState<T extends WXAHook.IType>(initialState: T): [T, WXAHook.IFuncti
             return;
         }
         instance._$state[index] = value;
-        // instance._$setup();
-        instance._$runSetup();
+        instance._$deferSetup();
     };
 
     return [instance._$state[index] as T, setState];
@@ -363,6 +362,25 @@ function useInstance(): WXAHook.componentInstance {
     return currentComInstance;
 }
 
+
+function useRef<T extends WXAHook.IType>(initialVal: T): {current: T} {
+    checkInstance();
+
+    let obj = {
+        current: initialVal
+    }
+
+    const instance = currentComInstance;
+    const index = callIndex++;
+
+    if (instance._$refs[index] === undefined) {
+        instance._$refs[index] = obj
+    }
+
+    return instance._$refs[index]
+}
+
+
 export {
-    withHooks, useState, useEffect, useMemo, useCallback, useInstance, checkInstance,
+    withHooks, useState, useEffect, useMemo, useCallback, useInstance, checkInstance, useRef
 };

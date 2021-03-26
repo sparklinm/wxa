@@ -40,6 +40,7 @@ declare namespace WXAHook {
         onPageScroll: onPageScroll[];
         onTabItemTap: onTabItemTap[];
         onResize: IFunction[];
+        onLoad: onLoad[];
     }
 
     interface StoredRelation {
@@ -70,6 +71,7 @@ declare namespace WXAHook {
         useResize: WrapFunction<onResize>;
         useMoved: IFunction;
         useReady: IFunction;
+        useLoad: WrapFunction<onLoad>;
     }
 
     interface Effect {
@@ -93,7 +95,7 @@ declare namespace WXAHook {
         _$effect?: Record<string, Effect>;
         _$properties?: string[],
         _$setup?: () => void;
-        _$runSetup:() => void;
+        _$deferSetup:() => void;
         _$useMemo?: Record<string, Memo>;
         _$updated: boolean;
         _$willUpdate: boolean;

@@ -1,6 +1,7 @@
 import {firstUpperLetter} from './util';
 
 const storedPageOptions: WXAHook.StoredPageOptions = {
+    onLoad: [],
     onShow: [],
     onHide: [],
     onPullDownRefresh: [],
@@ -95,6 +96,7 @@ function clearStoragedRelations(): void {
 }
 
 const {
+    useLoad,
     useShow,
     useHide,
     usePullDownRefresh,
@@ -113,6 +115,7 @@ export {
     storedPageOptions,
     storedComponentOptions,
     clearStoredOptions,
+    useLoad,
     useShow,
     useHide,
     usePullDownRefresh,

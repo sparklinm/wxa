@@ -76,8 +76,9 @@ declare namespace WXAHook {
 
     interface Effect {
         destroy?: EffectDestroy;
+        cb: IFunction,
         lastDeps: Deps;
-        run: Array<void | IFunction> | void | IFunction;
+        run: IFunction;
     }
 
     interface Memo {
@@ -102,6 +103,7 @@ declare namespace WXAHook {
         _$storedOptions: StoredPageOptions & StoredComponentOptions;
         _$storagedRelations: StoredRelations;
         _$deferUpdateData: (this: WXAHook.componentInstance, sourceData: IObject) => void;
+        _$updateData: (this: WXAHook.componentInstance) => Promise<void>;
         _$deferData: IObject;
         _$dom: Map<componentInstance, Set<componentInstance>>,
         _$consumeEffect: (this: WXAHook.componentInstance) => void,

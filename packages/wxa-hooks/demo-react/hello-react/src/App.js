@@ -18,9 +18,10 @@ function App() {
   //   }, 2000);
   // }, []);
 
-  useEffect(() => {
-    console.log('seconde effect');
-  }, [name]);
+  // useEffect(() => {
+  //   console.log('app effect');
+
+  // }, [name]);
 
 
 
@@ -34,15 +35,12 @@ function App() {
     //   console.log(pre);
     //   return pre+1
     // });
-    Promise.resolve().then(()=>{
-      setName('777');
-      setName('888');
-      setName('999');
-      setName('9991');
-      setName('9992');
-      setName('9993');
+    process.nextTick(() => {
+      console.log("ppp");
     })
- 
+
+    setName(name+1)
+    console.log('ss');
 
     // setName((pre,cur)=>{
     //   console.log(pre);
@@ -53,11 +51,13 @@ function App() {
     // setName(name+1)
   };
 
-  // const memoizedValue = useMemo(() => {
-  //       setTimeout(() => {
-  //     set()
-  //   }, 2000);
-  // },[]);
+  const memoizedValue = useMemo(() => {
+    console.log('memo');
+      // Promise.resolve().then(()=>{
+      //   console.log('ppp');
+      // })
+      setAge(age + 1)
+  },[name]);
 
 
   return (

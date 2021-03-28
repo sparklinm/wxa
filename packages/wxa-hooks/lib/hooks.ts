@@ -9,6 +9,9 @@ import {
     storagedRelations,
 } from './nativeOptions';
 import {isObj, depsChanged} from './util';
+import {
+    queueSetupJobsAsync, queuePostJobS, queueRenderJobs, queueSetupJobsSync,
+} from './scheduler';
 
 let currentComInstance: WXAHook.componentInstance = null;
 let callIndex = 0;
@@ -77,31 +80,6 @@ function setOptionAfter(vm: WXAHook.componentInstance) {
     }
 }
 
-const runEffect = (effect) => {
-    console.log('runEffect', typeof effect.destroy === 'function');
-    // 总是清除上一次的 effecct
-    if (typeof effect.destroy === 'function') {
-        effect.destroy();
-        effect.destroy = null;
-    }
-    // 接着调用下一次的 effect;
-    if (effect.run) effect.destroy = effect.run.call(null);
-    effect.run = null;
-    // if (typeof effect.destroy === 'function') {
-    //     effect.destroy();
-    //     effect.destroy = null;
-    // }
-
-    // if (effect.run) {
-    //     effect.run.forEach((task) => {
-    //         if (effect.destroy) effect.destroy();
-
-    //         effect.destroy = task.call(null);
-    //     });
-    //     effect.run = null;
-    // }
-};
-
 const log = (...args) => {
     console.log('[WXA hooks]', ...args);
 };
@@ -153,7 +131,11 @@ function withHooks(
                 });
 
                 // console.timeEnd('setup');
-                this._$deferUpdateData(data);
+                // this._$deferUpdateData(data);
+
+                this._$sourceData = data;
+
+                queueRenderJobs(this._$updateData);
 
                 this._$firstRender = false;
 
@@ -182,7 +164,7 @@ function withHooks(
             console.log('created setup');
         },
         attached() {
-            this._$setup();
+            queueSetupJobsSync(this._$setup);
             const parent = this.selectOwnerComponent() as WXAHook.componentInstance;
             if (!parent) {
                 return;
@@ -194,9 +176,7 @@ function withHooks(
             }
             children.add(this);
         },
-        ready() {
-            this._$consumeEffect();
-        },
+        ready() {},
         detached() {
             Object.keys(this._$effect).forEach((key) => {
                 const effect = this._$effect[key];
@@ -217,33 +197,41 @@ function withHooks(
             this._$deferData = sourceData;
             if (!this._$isUpdating && isObj(sourceData)) {
                 this._$isUpdating = true;
-                // wx.nextTick(() => {
-                const diffedData = diff.bind(this)(this._$deferData);
+                wx.nextTick(() => {
+                    const diffedData = diff.bind(this)(this._$deferData);
 
-                if (Object.keys(diffedData || {}).length === 0) {
-                    this._$isUpdating = false;
-                    return;
-                }
+                    if (Object.keys(diffedData || {}).length === 0) {
+                        this._$isUpdating = false;
+                        return;
+                    }
 
-                this.setData(diffedData, () => {
-                    console.log('update');
-                    this._$isUpdating = false;
-                    this._$consumeEffect();
+                    this.setData(diffedData, () => {
+                        console.log('update');
+                        this._$isUpdating = false;
+                        this._$consumeEffect();
 
-                    this._$deferUpdateData(this._$deferData);
+                        this._$deferUpdateData(this._$deferData);
+                    });
                 });
-                // });
             }
         },
-        _$consumeEffect() {
-            currentComInstance = this;
-            Object.keys(this._$effect).forEach((index) => {
-                const effect = this._$effect[index];
-                if (effect.run) {
-                    runEffect(effect);
+        _$updateData() {
+            return new Promise<void>((resolve) => {
+                const sourceData = this._$sourceData;
+                if (isObj(sourceData)) {
+                    const diffedData = diff.bind(this)(sourceData);
+
+                    if (Object.keys(diffedData || {}).length === 0) {
+                        resolve();
+                        return;
+                    }
+
+                    this.setData(diffedData, () => {
+                        console.log('update');
+                        resolve();
+                    });
                 }
             });
-            currentComInstance = null;
         },
     };
 
@@ -292,7 +280,8 @@ function useState<T extends WXAHook.IType>(initialState: T): [T, WXAHook.IFuncti
             return;
         }
         instance._$state[index] = value;
-        instance._$deferSetup();
+        // instance._$deferSetup();
+        queueSetupJobsAsync(instance._$setup);
     };
 
     return [instance._$state[index] as T, setState];
@@ -306,23 +295,45 @@ function useEffect(effectFn: () => WXAHook.EffectDestroy, deps: WXAHook.Deps): v
 
     let effect = instance._$effect[index];
 
+    const setEffect = () => {
+        effect.lastDeps = deps === undefined ? undefined : [...deps];
+        effect.cb = effectFn;
+    };
+
     if (effect === undefined) {
-        instance._$effect[index] = {
-            lastDeps: null,
-            run: null,
+        const initEffect = () => {
+            const runEffect = () => {
+                // 清除上一次的 effecct
+                if (typeof effect.destroy === 'function') {
+                    effect.destroy();
+                    effect.destroy = null;
+                }
+                // 调用下一次的 effect;
+                if (effect.cb) {
+                    effect.destroy = effect.cb.call(null);
+                }
+            };
+
+            effect = {
+                run: runEffect,
+                cb: undefined,
+                lastDeps: undefined,
+            };
+            setEffect();
+
+            instance._$effect[index] = effect;
         };
 
-        effect = instance._$effect[index];
+        initEffect();
+        queuePostJobS(effect.run);
+
+        return;
     }
 
-    // if (depsChanged(deps, effect.lastDeps)) {
-    //     effect.run = effect.run || [];
-    //     log('effect stack', effect.run.length);
-    //     effect.run.push(effectFn);
-    // }
-
-    effect.run = depsChanged(deps, effect.lastDeps) ? effectFn : effect.run;
-    effect.lastDeps = deps === undefined ? undefined : [...deps];
+    if (depsChanged(deps, effect.lastDeps)) {
+        setEffect();
+        queuePostJobS(effect.run);
+    }
 }
 
 function useMemo<T extends WXAHook.MemoValue>(memoFn: () => T, deps: WXAHook.Deps): T {
@@ -362,25 +373,23 @@ function useInstance(): WXAHook.componentInstance {
     return currentComInstance;
 }
 
-
-function useRef<T extends WXAHook.IType>(initialVal: T): {current: T} {
+function useRef<T extends WXAHook.IType>(initialVal: T): { current: T } {
     checkInstance();
 
-    let obj = {
-        current: initialVal
-    }
+    const obj = {
+        current: initialVal,
+    };
 
     const instance = currentComInstance;
     const index = callIndex++;
 
     if (instance._$refs[index] === undefined) {
-        instance._$refs[index] = obj
+        instance._$refs[index] = obj;
     }
 
-    return instance._$refs[index]
+    return instance._$refs[index];
 }
 
-
 export {
-    withHooks, useState, useEffect, useMemo, useCallback, useInstance, checkInstance, useRef
+    withHooks, useState, useEffect, useMemo, useCallback, useInstance, checkInstance, useRef,
 };

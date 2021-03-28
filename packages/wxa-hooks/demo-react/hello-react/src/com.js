@@ -2,11 +2,19 @@ import { useEffect, useState } from 'react'
 
 export function Comp(props) {
   let [v, setV] = useState(100)
-  console.log('comp')
+  // console.log('comp')
 
-//   useEffect(()=>{
-//       console.log("comp Effect ", props.name )
-//   }, [props.name])
+  // useEffect(()=>{
+  //     console.log("comp Effect ", props.name )
+  //     Promise.resolve().then(()=>{
+  //       console.log('ppp');
+  //     })
+  //     setV(v + 10)
+  // }, [props.name])
+
+  // useEffect(()=>{
+  //   console.log("comp second Effect ")
+  // }, [v])
 
   return (
     <div>

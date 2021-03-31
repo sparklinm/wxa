@@ -25,7 +25,8 @@ withHooks(
         let [bgImg, setBgImg] = useState("");
         let [songList, setSongList] = useState([]);
         let [loading, setLoading] = useState(true);
-        let [currentSong, setCurrentSong] = useState({});
+        let [currentSong, setCurrentSong] = useState(null);
+        let instance = useInstance()
         let oprionsRef = useRef()
 
         useLoad(async (options)=>{
@@ -36,10 +37,12 @@ withHooks(
             setBgImg(res.covers[0]);
             setLoading(false);
         })
-        
 
+        useShow(()=>{
+            console.log('---------list-index-show------');
+        })
+        
         function playMusic(e) {
-            console.log('options', oprionsRef.current);
             setCurrentSong(e.detail.song);
         }
 
@@ -80,15 +83,15 @@ withHooks(
             </view>
         </view>
         <view class="songlist">
-            <block
+            <view
                 wx:for="{{songList}}"
-                wx:key="{{item.song_id}}"
+                wx:key="song_id"
             >
                 <song-item
                     song="{{item}}"
                     bindplay="playMusic"
                 >
-            </block>
+            </view>
         </view>
         <loading hidden="{{!loading}}">
             加载中...

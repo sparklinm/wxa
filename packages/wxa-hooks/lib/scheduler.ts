@@ -22,6 +22,7 @@ let currentTsk:Task = {
 };
 let isSetting = false;
 let isRendering = false;
+let isTasking = false;
 
 export function queueSetupJobsAsync(job: WXAHook.IFunction): undefined {
     newTask={
@@ -38,6 +39,8 @@ export function queueSetupJobsAsync(job: WXAHook.IFunction): undefined {
     }
 
     isSetting = true;
+
+    // 合并一个tick中的setup任务
     wx.nextTick(() => {
         flushJobs(newTask.setupJobs);
         isSetting = false;
@@ -46,8 +49,34 @@ export function queueSetupJobsAsync(job: WXAHook.IFunction): undefined {
     });
 }
 
-
 export function queueSetupJobsSync(job: WXAHook.IFunction): void {
+    newTask={
+        setupJobs: [],
+        preJobs: [],
+        renderJobs: [],
+        postJobS: [],
+    };
+    tasks[newTaskIndex] = newTask;
+    newTask.setupJobs.push(job);
+
+    flushJobs(newTask.setupJobs);
+
+
+    if (isTasking) {
+        return;
+    }
+
+    isTasking = true;
+
+    // 合并20ms内的渲染任务
+    setTimeout(() => {
+        isTasking = false;
+        newTaskIndex++;
+        render();
+    }, 20);
+}
+
+export function queueSetupJobsFirst(job: WXAHook.IFunction): void {
     newTask={
         setupJobs: [],
         preJobs: [],

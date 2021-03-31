@@ -21,7 +21,6 @@ declare namespace WXAHook {
     type componentConfig = {
         data?: Data;
         created(this: componentInstance): void;
-        ready(this: componentInstance): void;
         attached(this: componentInstance): void;
         detached(this: componentInstance): void;
         relations?: Relations;
@@ -30,8 +29,6 @@ declare namespace WXAHook {
     } & componentOptions;
 
     interface StoredPageOptions {
-        onShow: IFunction[];
-        onHide: IFunction[];
         onPullDownRefresh: IFunction[];
         onReachBottom: IFunction[];
         onShareAppMessage: onShareAppMessage[];
@@ -39,8 +36,13 @@ declare namespace WXAHook {
         onAddToFavorites: onAddToFavorites[];
         onPageScroll: onPageScroll[];
         onTabItemTap: onTabItemTap[];
-        onResize: IFunction[];
         onLoad: onLoad[];
+    }
+
+    interface PageAndComponentOptions {
+        show: IFunction[];
+        hide: IFunction[];
+        resize: IFunction[];
     }
 
     interface StoredRelation {
@@ -74,6 +76,17 @@ declare namespace WXAHook {
         useLoad: WrapFunction<onLoad>;
     }
 
+    interface State {
+        initFn?: IFunction;
+        tracks: unknown[];
+        value: unknown;
+        get: IFunction;
+    }
+
+    interface SetStateCb {
+        (preValue: unknown): unknown
+    }
+
     interface Effect {
         destroy?: EffectDestroy;
         cb: IFunction,
@@ -92,21 +105,16 @@ declare namespace WXAHook {
     }
 
     interface HookAttrs {
-        _$state?: IObject;
+        _$state?: Record<string, State>;
         _$effect?: Record<string, Effect>;
         _$properties?: string[],
         _$setup?: () => void;
-        _$deferSetup:() => void;
         _$useMemo?: Record<string, Memo>;
-        _$updated: boolean;
-        _$willUpdate: boolean;
         _$storedOptions: StoredPageOptions & StoredComponentOptions;
         _$storagedRelations: StoredRelations;
-        _$deferUpdateData: (this: WXAHook.componentInstance, sourceData: IObject) => void;
         _$updateData: (this: WXAHook.componentInstance) => Promise<void>;
-        _$deferData: IObject;
+        _$sourceData: IObject;
         _$dom: Map<componentInstance, Set<componentInstance>>,
-        _$consumeEffect: (this: WXAHook.componentInstance) => void,
         _$getPropsValue: () => Record<string, any>,
     }
 

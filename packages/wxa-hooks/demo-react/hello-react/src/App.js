@@ -7,6 +7,7 @@ let a = [1, 2, 3];
 function App() {
   let [name, setName] = useState(1);
   let [age, setAge] = useState(1);
+  let [obj, setObj] = useState({});
 
   // Promise.resolve().then(()=>console.log('resolve'))
   // setName('222');
@@ -35,11 +36,26 @@ function App() {
     //   console.log(pre);
     //   return pre+1
     // });
-    process.nextTick(() => {
-      console.log("ppp");
-    })
+    // process.nextTick(() => {
+    //   console.log("ppp");
+    // })
+
+
 
     setName(name+1)
+
+    // setName((pre)=>{
+    //   console.log('pre', pre);
+    //   return 555
+    // })
+
+    // setName((pre)=>{
+    //   console.log('pre', pre);
+    //   return 5555
+    // })
+
+    obj.a=11111111111111
+    setObj(obj)
     console.log('ss');
 
     // setName((pre,cur)=>{
@@ -65,7 +81,7 @@ function App() {
       <header className='App-header' onMouseDown={() => set()}>
         <img src={logo} className='App-logo' alt='logo' />
         <Comp name={name}></Comp>
-        {age}
+        {obj.a}
         <p>{name.toString()}</p>
         <a
           className='App-link'

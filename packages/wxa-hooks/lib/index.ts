@@ -1,5 +1,5 @@
 export {
-    withHooks, useState, useEffect, useMemo, useCallback, useInstance, useRef
+    withHooks, useState, useEffect, useMemo, useCallback, useInstance, useRef,
 } from './hooks';
 
 export {

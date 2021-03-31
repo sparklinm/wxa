@@ -2,8 +2,6 @@ import {firstUpperLetter} from './util';
 
 const storedPageOptions: WXAHook.StoredPageOptions = {
     onLoad: [],
-    onShow: [],
-    onHide: [],
     onPullDownRefresh: [],
     onReachBottom: [],
     onShareAppMessage: [],
@@ -11,7 +9,13 @@ const storedPageOptions: WXAHook.StoredPageOptions = {
     onAddToFavorites: [],
     onPageScroll: [],
     onTabItemTap: [],
-    onResize: [],
+};
+
+// 放入pageLifetimes中
+const storedBothOptions: WXAHook.PageAndComponentOptions = {
+    show: [],
+    hide: [],
+    resize: [],
 };
 
 const storedComponentOptions: WXAHook.StoredComponentOptions = {
@@ -21,11 +25,11 @@ const storedComponentOptions: WXAHook.StoredComponentOptions = {
 let storedOptions = {
     ...storedPageOptions,
     ...storedComponentOptions,
+    ...storedBothOptions,
 };
 
 let storagedRelations: WXAHook.StoredRelations = {};
 
-// TODOS: onShow --> pageLifetimes 组件构造器必须声明在 pageLifetimes 才能
 function useConstructor(): WXAHook.UseFn {
     const useFn: Partial<WXAHook.UseFn> = {};
 
@@ -60,10 +64,14 @@ function clearStoredOptions(): void {
     for (const key of Object.keys(storedComponentOptions)) {
         storedComponentOptions[key] = [];
     }
+    for (const key of Object.keys(storedBothOptions)) {
+        storedBothOptions[key] = [];
+    }
 
     storedOptions = {
         ...storedPageOptions,
         ...storedComponentOptions,
+        ...storedBothOptions,
     };
 }
 
@@ -114,6 +122,7 @@ export {
     storedOptions,
     storedPageOptions,
     storedComponentOptions,
+    storedBothOptions,
     clearStoredOptions,
     useLoad,
     useShow,

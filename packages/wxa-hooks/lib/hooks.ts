@@ -5,27 +5,46 @@ import {
     clearStoragedRelations,
     storedPageOptions,
     storedComponentOptions,
+    storedBothOptions,
     storedOptions,
     storagedRelations,
 } from './nativeOptions';
 import {isObj, depsChanged} from './util';
 import {
-    queueSetupJobsAsync, queuePostJobS, queueRenderJobs, queueSetupJobsSync,
+    queueSetupJobsAsync, queuePostJobS, queueRenderJobs, queueSetupJobsFirst,
 } from './scheduler';
 
 let currentComInstance: WXAHook.componentInstance = null;
 let callIndex = 0;
 
-const checkInstance = () => {
+const checkInstance = ():void => {
     // tslint:disable-next-line: curly
     if (!currentComInstance) throw new Error('Component instance not found');
 };
 
+const MapPageLifetimes = {
+    show: 'onShow',
+    hide: 'onHide',
+    resize: 'onResize',
+};
+
 // Component的选项只能在创建前添加
 function setOptionBefore(config: WXAHook.componentConfig, preDeclareField: WXAHook.PreDeclareField) {
+    config.lifetimes = config.lifetimes || {};
     for (const key of Object.keys(storedComponentOptions)) {
-        const originFn = config[key];
-        config[key] = function(params) {
+        const originFn = config.lifetimes[key] || config[key];
+        config.lifetimes[key] = function(params) {
+            originFn && originFn.call(this, params);
+            this._$storedOptions[key].forEach((cb: () => WXAHook.IType) => {
+                if (cb) cb();
+            });
+        };
+    }
+
+    config.pageLifetimes = config.pageLifetimes || {};
+    for (const key of Object.keys(storedBothOptions)) {
+        const originFn = config.pageLifetimes[key] || config[MapPageLifetimes[key]];
+        config.pageLifetimes[key] = function(params) {
             originFn && originFn.call(this, params);
             this._$storedOptions[key].forEach((cb: () => WXAHook.IType) => {
                 if (cb) cb();
@@ -100,8 +119,6 @@ function withHooks(
             this._$effect = {};
             this._$useMemo = {};
             this._$refs = {};
-            this._$updated = false;
-            this._$isUpdating = false;
             this._$dom = new Map();
             this._$properties = Object.keys(config.properties);
 
@@ -131,26 +148,13 @@ function withHooks(
                 });
 
                 // console.timeEnd('setup');
-                // this._$deferUpdateData(data);
-
-                this._$sourceData = data;
+                this._$sourceData = JSON.parse(JSON.stringify(data));
 
                 queueRenderJobs(this._$updateData);
 
                 this._$firstRender = false;
 
                 // console.timeEnd('setup');
-            };
-
-            this._$deferSetup = () => {
-                if (this._$isSetting) {
-                    return;
-                }
-                this._$isSetting = true;
-                wx.nextTick(() => {
-                    this._$setup();
-                    this._$isSetting = false;
-                });
             };
 
             this._$getPropsValue = () => {
@@ -164,7 +168,7 @@ function withHooks(
             console.log('created setup');
         },
         attached() {
-            queueSetupJobsSync(this._$setup);
+            queueSetupJobsFirst(this._$setup);
             const parent = this.selectOwnerComponent() as WXAHook.componentInstance;
             if (!parent) {
                 return;
@@ -176,7 +180,6 @@ function withHooks(
             }
             children.add(this);
         },
-        ready() {},
         detached() {
             Object.keys(this._$effect).forEach((key) => {
                 const effect = this._$effect[key];
@@ -192,28 +195,6 @@ function withHooks(
             this._$dom = null;
             this._$storagedRelations = null;
             this._$storedOptions = null;
-        },
-        _$deferUpdateData(sourceData: WXAHook.IObject) {
-            this._$deferData = sourceData;
-            if (!this._$isUpdating && isObj(sourceData)) {
-                this._$isUpdating = true;
-                wx.nextTick(() => {
-                    const diffedData = diff.bind(this)(this._$deferData);
-
-                    if (Object.keys(diffedData || {}).length === 0) {
-                        this._$isUpdating = false;
-                        return;
-                    }
-
-                    this.setData(diffedData, () => {
-                        console.log('update');
-                        this._$isUpdating = false;
-                        this._$consumeEffect();
-
-                        this._$deferUpdateData(this._$deferData);
-                    });
-                });
-            }
         },
         _$updateData() {
             return new Promise<void>((resolve) => {
@@ -254,7 +235,7 @@ function withHooks(
     }
 
     setOptionBefore(config, {
-    // TODOS: 兼容原生写法
+        // TODOS: 兼容原生写法
         relations: config.relations,
     });
     console.timeEnd('[with Hook] before' + setup.name);
@@ -263,28 +244,58 @@ function withHooks(
     return wxa.launchComponent(config);
 }
 
-function useState<T extends WXAHook.IType>(initialState: T): [T, WXAHook.IFunction] {
+function dispatch(state, action) {
+    if (typeof action !== 'function') {
+        state.value = action;
+    } else {
+        state.value = action(state.value);
+    }
+}
+
+function useState<T extends WXAHook.IType>(init: T): [T, WXAHook.IFunction] {
     checkInstance();
 
     const index = callIndex++;
     const instance = currentComInstance;
 
+
+    let state = instance._$state[index];
+
     // initialState;
-    if (instance._$state[index] === undefined) {
-        instance._$state[index] = initialState;
+    if (state === undefined) {
+        const initState = () => {
+            state = {
+                value: undefined,
+                tracks: [init],
+                get() {
+                    state.tracks.forEach((track)=>{
+                        dispatch(state, track);
+                    });
+
+                    state.tracks.length = 0;
+                },
+            };
+
+            state.initFn = <WXAHook.IFunction>init;
+
+            instance._$state[index] = state;
+        };
+
+        initState();
     }
 
     // tslint:disable-next-line: only-arrow-functions
-    const setState = function(value: WXAHook.IType) {
-        if (Object.is(value, instance._$state[index])) {
+    const setState = function(value: WXAHook.IType | WXAHook.SetStateCb) {
+        if (Object.is(value, state.value)) {
             return;
         }
-        instance._$state[index] = value;
-        // instance._$deferSetup();
+        state.tracks.push(value);
         queueSetupJobsAsync(instance._$setup);
     };
 
-    return [instance._$state[index] as T, setState];
+    state.get();
+
+    return [state.value as T, setState];
 }
 
 function useEffect(effectFn: () => WXAHook.EffectDestroy, deps: WXAHook.Deps): void {

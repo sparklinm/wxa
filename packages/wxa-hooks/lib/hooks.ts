@@ -11,7 +11,7 @@ import {
 } from './nativeOptions';
 import {isObj, depsChanged} from './util';
 import {
-    queueSetupJobsAsync, queuePostJobS, queueRenderJobs, queueSetupJobsFirst,
+    queueSetupJobsAsync, queuePostJobs, queueRenderJobs, queueSetupJobsFirst,
 } from './scheduler';
 
 let currentComInstance: WXAHook.componentInstance = null;
@@ -110,7 +110,6 @@ function withHooks(
     // tslint:disable-next-line: no-empty
     setup = typeof setup === 'function' ? setup : () => ({});
     console.time('[with Hook] before' + setup.name);
-    let cansetOptionAfter = true;
 
     const config: WXAHook.componentConfig = {
         ...options,
@@ -121,12 +120,17 @@ function withHooks(
             this._$refs = {};
             this._$dom = new Map();
             this._$properties = Object.keys(config.properties);
+            this._$id= Date.now();
 
             // 初始渲染，即第一次执行_$setup
             this._$firstRender = true;
             this._$isSetting = false;
 
+            let cansetOptionAfter = true;
+
             this._$setup = () => {
+                console.log(this._$id);
+
                 callIndex = 0;
                 // console.time('setup');
                 currentComInstance = this;
@@ -150,6 +154,9 @@ function withHooks(
                 // console.timeEnd('setup');
                 this._$sourceData = JSON.parse(JSON.stringify(data));
 
+                console.log('_$sourceData', this._$sourceData);
+                console.log(this);
+
                 queueRenderJobs(this._$updateData);
 
                 this._$firstRender = false;
@@ -169,16 +176,16 @@ function withHooks(
         },
         attached() {
             queueSetupJobsFirst(this._$setup);
-            const parent = this.selectOwnerComponent() as WXAHook.componentInstance;
-            if (!parent) {
-                return;
-            }
+            // const parent = this.selectOwnerComponent() as WXAHook.componentInstance;
+            // if (!parent) {
+            //     return;
+            // }
 
-            let children: Set<any> = this._$dom.get(parent);
-            if (!children) {
-                this._$dom.set(parent, (children = new Set()));
-            }
-            children.add(this);
+            // let children: Set<any> = this._$dom.get(parent);
+            // if (!children) {
+            //     this._$dom.set(parent, (children = new Set()));
+            // }
+            // children.add(this);
         },
         detached() {
             Object.keys(this._$effect).forEach((key) => {
@@ -207,11 +214,20 @@ function withHooks(
                         return;
                     }
 
+                    console.log('diffedData', diffedData);
+                    console.log(this);
+
+
+                    console.time('setData');
+
+
                     this.setData(diffedData, () => {
                         console.log('update');
                         resolve();
                     });
+                    console.timeEnd('setData');
                 }
+                resolve();
             });
         },
     };
@@ -336,14 +352,14 @@ function useEffect(effectFn: () => WXAHook.EffectDestroy, deps: WXAHook.Deps): v
         };
 
         initEffect();
-        queuePostJobS(effect.run);
+        queuePostJobs(effect.run);
 
         return;
     }
 
     if (depsChanged(deps, effect.lastDeps)) {
         setEffect();
-        queuePostJobS(effect.run);
+        queuePostJobs(effect.run);
     }
 }
 

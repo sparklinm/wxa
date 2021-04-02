@@ -19,6 +19,7 @@ import {
     useRef
 } from "@wxa/hooks";
 import { getSongList } from "../../../service.js";
+import { storeSongList, storeSong } from "../../../store.js";
 
 withHooks(
     () => {
@@ -26,24 +27,29 @@ withHooks(
         let [songList, setSongList] = useState([]);
         let [loading, setLoading] = useState(true);
         let [currentSong, setCurrentSong] = useState(null);
-        let instance = useInstance()
-        let oprionsRef = useRef()
+        let instance = useInstance();
+        let oprionsRef = useRef();
 
-        useLoad(async (options)=>{
-            console.log('options',options);
-            oprionsRef.current = options 
+        useLoad(async options => {
+            console.log("options", options);
+            oprionsRef.current = options;
             let res = await getSongList(options.type);
             setSongList(res.list);
             setBgImg(res.covers[0]);
             setLoading(false);
-        })
-
-        useShow(()=>{
-            console.log('---------list-index-show------');
-        })
+        });
         
+
+
+        useShow(() => {
+            console.log("---------list-index-show------");
+        });
+
         function playMusic(e) {
-            setCurrentSong(e.detail.song);
+            let index = e.target.dataset.index
+            setCurrentSong(songList[index]);
+            storeSong(e.detail.song);
+            storeSongList(songList);
         }
 
         return {
@@ -89,7 +95,8 @@ withHooks(
             >
                 <song-item
                     song="{{item}}"
-                    bindplay="playMusic"
+                    data-index="{{index}}"
+                    bindtap="playMusic"
                 >
             </view>
         </view>

@@ -23,68 +23,119 @@ function creatMusic(song) {
     let innerAudioContext = wx.createInnerAudioContext();
     innerAudioContext.autoplay = false;
     innerAudioContext.src = song.src;
-    return innerAudioContext
+    return innerAudioContext;
 }
 
 withHooks(
-    ({ song }) => {
+    ({ song, songList }) => {
         let [showBtnPause, setShowBtnPause] = useState(false);
-        let [seconds, setSeconds] = useState(0)
-        let musicRef = useRef()
-        let timerRef = useRef()
+        let [seconds, setSeconds] = useState(0);
+        let [curSong, setCurSong] = useState(null);
+        let [curIndex, setCurIndex] = useState(0);
+        let [totalSeconds, setTotalSeconds] = useState(0);
+        let [playStatus, setPlayStatus] = useState("none");
+        let musicRef = useRef();
+        let timerRef = useRef();
 
-        useEffect(()=>{
-            if(!song){
-                return
-            }
+        useEffect(
+            () => {
+                let index = songList.findIndex(
+                    item => item.song_id === song.song_id
+                );
+                setCurIndex(index);
+                setCurSong(song);
+            },
+            [song]
+        );
 
-            musicRef.current = creatMusic(song)
-            handleSongStatus('start')
+        useEffect(
+            () => {
 
-            return ()=>{
-                musicRef.current.destroy()
-            }
-        }, [song])
+                if (!song) {
+                    return;
+                }
 
-        console.log('playSong', song);
+                console.log("---playSong---", curSong);
+                musicRef.current = creatMusic(curSong);
+                setPlayStatus("new");
+                musicRef.current.onCanplay(() => {
+                    let intervalID = setInterval(function() {
+                        console.log("onCanplay", musicRef.current.duration);
+                        if (musicRef.current.duration !== 0) {
+                            setTotalSeconds(
+                                Math.ceil(musicRef.current.duration)
+                            );
+                            setPlayStatus("play");
+                            clearInterval(intervalID);
+                        }
+                    }, 500);
+                });
 
-        useShow(()=>{
-            console.log('---------player-show------');
-        })
-        
+                return () => {
+                    musicRef.current.destroy();
+                };
+            },
+            [curSong]
+        );
+
+        useEffect(
+            () => {
+                handleSongStatus(playStatus);
+            },
+            [playStatus]
+        );
+
+        useShow(() => {
+            console.log("---------player-show------");
+        });
 
         function handleSongStatus(playStatus) {
-            if(!musicRef.current){
-                return
+            if (!musicRef.current) {
+                return;
             }
-            
+
             switch (playStatus) {
-                case 'start':
+                case "new":
+                    setSeconds(0);
+                    setTotalSeconds(0);
+                    setShowBtnPause(false);
+                    clearInterval(timerRef.current);
+
+                    break;
+                case "play":
                     musicRef.current.play();
                     setShowBtnPause(false);
 
-                    clearInterval(timerRef.current)
-                    setSeconds(0)
+                    clearInterval(timerRef.current);
+
                     timerRef.current = setInterval(() => {
-                        setSeconds((pre)=>{
-                            return pre + 1
-                        })
+                        setSeconds(pre => {
+                            if (pre >= totalSeconds) {
+                                setPlayStatus("pause");
+                                return pre;
+                            }
+                            return pre + 1;
+                        });
                     }, 1000);
                     break;
-                case 'pause':
+                case "pause":
                     musicRef.current.pause();
                     setShowBtnPause(true);
 
-                    clearInterval(timerRef.current)
-                    break
-                case 'continue':
+                    clearInterval(timerRef.current);
+                    break;
+                case "continue":
                     musicRef.current.play();
                     setShowBtnPause(false);
 
                     timerRef.current = setInterval(() => {
-                        setSeconds((pre)=>{
-                            return pre + 1
-                        })
+                        setSeconds(pre => {
+                            if (pre >= totalSeconds) {
+                                setPlayStatus("pause");
+                                return pre;
+                            }
+                            return pre + 1;
+                        });
                     }, 1000);
                 default:
                     break;
@@ -92,17 +143,81 @@ withHooks(
         }
 
         function play(params) {
-            handleSongStatus('continue')
+            setPlayStatus("continue");
         }
 
         function pause(params) {
-            handleSongStatus('pause')
+            setPlayStatus("pause");
         }
+
+        function checkSwitchSong(pre) {
+            if (!songList.length || songList.length === 1) {
+                wx.showToast({
+                    title: "没有可播放歌曲",
+                    icon: "none",
+                    duration: 1500,
+                    mask: true
+                });
+
+                return false;
+            }
+
+            if (pre) {
+                if (curIndex === 0) {
+                    wx.showToast({
+                        title: "已经第一首了",
+                        icon: "none",
+                        duration: 1500,
+                        mask: true
+                    });
+
+                    return false;
+                }
+
+                return true;
+            }
+
+            if (curIndex === songList.length - 1) {
+                wx.showToast({
+                    title: "已经最后一首了",
+                    icon: "none",
+                    duration: 1500,
+                    mask: true
+                });
+
+                return false;
+            }
+
+            return true;
+        }
+
+        function pre(params) {
+            if (!checkSwitchSong(true)) {
+                return;
+            }
+
+            let preIndex = curIndex - 1;
+            setCurIndex(preIndex);
+            setCurSong(songList[preIndex]);
+        }
+
+        function next(params) {
+            if (!checkSwitchSong(false)) {
+                return;
+            }
+
+            let nextIndex = curIndex + 1;
+            setCurIndex(nextIndex);
+            setCurSong(songList[nextIndex]);
+        }
+
         return {
-            data: { song, showBtnPause,seconds },
+            data: { song: curSong, showBtnPause, seconds, totalSeconds },
             methods: {
                 play,
-                pause
+                pause,
+                pre,
+                next
             }
         };
     },
@@ -133,12 +248,17 @@ withHooks(
 </config>
 
 <template>
-    <view class="m-playbar m-playbar-unlock">
+    <view
+        class="m-playbar m-playbar-unlock"
+        wx:if="{{song}}"
+    >
         <view class="wrap">
             <view class="btns">
                 <image
                     src="/assets/images/next.png"
                     class="pre small-btn"
+                    bindtap="pre"
+                    style="transform: rotate(180deg);"
                 ></image>
                 <view class="play-or-pause">
                     <image
@@ -157,71 +277,16 @@ withHooks(
                 <image
                     src="/assets/images/next.png"
                     class="next small-btn"
+                    bindtap="next"
                 ></image>
             </view>
 
-            <text class="">播放时间：{{seconds}}</text>
-            
-            <!-- <view class="head j-flag">
-                <img src="http://p1.music.126.net/bJ1G6LXrwCRK9dyErp4-eg==/109951165741670916.jpg?param=34y34">
-                <text
-                    href="/song?id=1816018288"
-                    hidefocus="true"
-                    class="mask"
-                >
-                </text></view>
-            <view class="play">
-                <view class="j-flag words">
-                    <text
-                        hidefocus="true"
-                        href="/song?id=1816018288"
-                        class="f-thide name fc1 f-fl"
-                        title="茫茫星河"
-                    >茫茫星河</text>
-                    <text
-                        hidefocus="true"
-                        href="/mv?id=14242494"
-                        class="mv f-fl"
-                        title="MV"
-                    >
-                    </text>
-                    <span class="by f-thide f-fl">
-                        <span title="周深">
-                            <text
-                                class=""
-                                href="/artist?id=1030001"
-                                hidefocus="true"
-                            >周深
-                            </text></span></span>
-                    <text
-                        href="/album?id=122312454&amp;_hash=songlist-1816018288"
-                        class="src"
-                        title="来自专辑"
-                    ></text>
-                </view>
-                <view
-                    class="m-pbar"
-                    data-action="noop"
-                >
-                    <view
-                        class="barbg j-flag"
-                        id="auto-id-HHPme5DzVlGNuNEp"
-                    >
-                        <view
-                            class="rdy"
-                            style="width: 100%;"
-                        ></view>
-                        <view
-                            class="cur"
-                            style="width: 4.18986%;"
-                        ><text
-                                class="btn f-tdn f-alpha"
-                                id="auto-id-Fy9JSBwGwM8bpuel"
-                            ><i></i></text></view>
-                    </view>
-                    <text class="j-flag time"><text>00:12</text> / 05:05</text>
-                </view>
-            </view> -->
+            <text class="">{{seconds}}</text>
+            <text
+                class=""
+            > / {{totalSeconds}}</text>
+
+            <text style="margin-left: 50rpx">{{song.title}} </text>
         </view>
     </view>
 </template>

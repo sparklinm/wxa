@@ -1,256 +1,274 @@
 <script>
 import {
-  withHooks,
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useInstance,
-  useShow,
-  usePullDownRefresh,
-  useShareAppMessage,
-  useShareTimeline,
-  useAddToFavorites,
-  usePageScroll,
-  useTabItemTap,
-  useReachBottom,
-  useParams
+    withHooks,
+    useState,
+    useEffect,
+    useMemo,
+    useCallback,
+    useInstance,
+    useShow,
+    usePullDownRefresh,
+    useShareAppMessage,
+    useShareTimeline,
+    useAddToFavorites,
+    usePageScroll,
+    useTabItemTap,
+    useReachBottom,
+    useParams
 } from "@wxa/hooks";
-import {router} from '@wxa/core';
+import { router } from "@wxa/core";
 
 function throttle(fn, threshhold) {
-  var timeout;
-  var start = new Date();
-  var threshhold = threshhold || 160;
-  return function() {
-    var context = this,
-      args = arguments,
-      curr = new Date() - 0;
+    var timeout;
+    var start = new Date();
+    var threshhold = threshhold || 160;
+    return function() {
+        var context = this,
+            args = arguments,
+            curr = new Date() - 0;
 
-    clearTimeout(timeout); //总是干掉事件回调
-    if (curr - start >= threshhold) {
-      console.log("now", curr, curr - start); //注意这里相减的结果，都差不多是160左右
-      fn.apply(context, args); //只执行一部分方法，这些方法是在某个时间段内执行一次
-      start = curr;
-    } else {
-      //让方法在脱离事件后也能执行一次
-      timeout = setTimeout(function() {
-        fn.apply(context, args);
-      }, threshhold);
-    }
-  };
+        clearTimeout(timeout); //总是干掉事件回调
+        if (curr - start >= threshhold) {
+            console.log("now", curr, curr - start); //注意这里相减的结果，都差不多是160左右
+            fn.apply(context, args); //只执行一部分方法，这些方法是在某个时间段内执行一次
+            start = curr;
+        } else {
+            //让方法在脱离事件后也能执行一次
+            timeout = setTimeout(function() {
+                fn.apply(context, args);
+            }, threshhold);
+        }
+    };
 }
 
 function getRandom() {
-  return Math.floor(Math.random() * 1000000);
+    return Math.floor(Math.random() * 1000000);
 }
 
 let index = 0;
 function getCount(num) {
-  let count = useMemo(
-    () => {
-      index++;
-      return num + getRandom();
-    },
-    [num]
-  );
+    let count = useMemo(
+        () => {
+            index++;
+            return num + getRandom();
+        },
+        [num]
+    );
 
-  return count;
+    return count;
 }
 
 let times = {};
 
 function comuputeTime(fn, type) {
-  let start = Date.now();
-  fn();
-  let end = Date.now();
-  times[type] = times[type] || 0;
-  times[type] += end - start;
-  return;
+    let start = Date.now();
+    fn();
+    let end = Date.now();
+    times[type] = times[type] || 0;
+    times[type] += end - start;
+    return;
 }
 
 function animate() {
-  let numsLenght = 100;
+    let numsLenght = 100;
 
-  let array = new Array(numsLenght);
-  array.fill(0);
+    let array = new Array(numsLenght);
+    array.fill(0);
 
-  let [nums, setNums] = useState(array);
+    let [nums, setNums] = useState(array);
 
-  let counts = new Array(numsLenght);
+    let counts = new Array(numsLenght);
 
-  comuputeTime(() => {
-    nums.forEach((item, index) => {
-      counts[index] = getCount(item);
-    });
-  }, "loop");
+    comuputeTime(() => {
+        nums.forEach((item, index) => {
+            counts[index] = getCount(item);
+        });
+    }, "loop");
 
-  function change() {
-    console.time("change");
-    nums.forEach((item, index) => {
-      nums[index] = getRandom();
-      setNums(nums);
-    });
-    console.timeEnd("change");
-    console.log(times);
-    console.log(index);
-    index = 0;
-    times = {};
-  }
+    function change() {
+        console.time("change");
+        nums.forEach((item, index) => {
+            nums[index] = getRandom();
+            setNums(nums);
+        });
+        console.timeEnd("change");
+        console.log(times);
+        console.log(index);
+        index = 0;
+        times = {};
+    }
 
-  return { change, nums, counts };
+    return { change, nums, counts };
 }
 
 withHooks(
-  () => {
-    // console.log('ppppp', params)
-    let params = useParams();
-    let [show, setShow] = useState(false);
-    let [count, setCount] = useState(0);
-    let [x, setX] = useState(0);
-    let [y, setY] = useState(0);
-    let [a, setA] = useState(params.name);
-    let instance = useInstance(null);
+    () => {
+        // console.log('ppppp', params)
+        let params = useParams();
+        let [show, setShow] = useState(false);
+        let [count, setCount] = useState(0);
+        let [x, setX] = useState(0);
+        let [y, setY] = useState(0);
+        let [a, setA] = useState(params.name);
+        let instance = useInstance(null);
 
-    let { change, nums, counts } = animate();
+        let { change, nums, counts } = animate();
 
-    console.log('3');
+        console.log("3");
 
-    useEffect(()=>{
-      setShow(true);
-      // await new Promise((r)=>setTimeout(()=>r(), 1000));
-      // console.log('useEffect xxxxx')
-      // setA(10000);
-      // setTimeout(()=>{
-        //   console.log('useEffect xxxxx', a)
-      // }, 100)
-    }, []);
+        useEffect(() => {
+            setShow(true);
+            // await new Promise((r)=>setTimeout(()=>r(), 1000));
+            // console.log('useEffect xxxxx')
+            // setA(10000);
+            // setTimeout(()=>{
+            //   console.log('useEffect xxxxx', a)
+            // }, 100)
+        }, []);
 
-    useShow(()=>{
-      // setA(params.name);
-      // console.log('xxx', params.name)
-    })
+        useShow(() => {
+            // setA(params.name);
+            // console.log('xxx', params.name)
+        });
 
-    let [name, setName] = useState('1111');
+        let [name, setName] = useState("1111");
 
-    useEffect(()=>{
-      // setTimeout(()=>{
-      //   console.log('parent promise resolve')
-      //   // 每一次都会触发一次 re-render
-      //   setName('111');
-      //   setTimeout(()=>{
-      //     setName('3333');
-      //   })
-      //   setName('12');
-      //   setName('13');
-      //   setName('14');
-      //   setName('4444');
-      //   setName('5555');
-        
-      //   setTimeout(()=>{
-      //     console.log('parent promise resolve double ', name)
-      //     setName('2222');
-      //   }, 10);
-      // }, 2000);
-    }, []);
-    // setA(params.name);
+        useEffect(() => {
+            // setTimeout(()=>{
+            //   console.log('parent promise resolve')
+            //   // 每一次都会触发一次 re-render
+            //   setName('111');
+            //   setTimeout(()=>{
+            //     setName('3333');
+            //   })
+            //   setName('12');
+            //   setName('13');
+            //   setName('14');
+            //   setName('4444');
+            //   setName('5555');
+            //   setTimeout(()=>{
+            //     console.log('parent promise resolve double ', name)
+            //     setName('2222');
+            //   }, 10);
+            // }, 2000);
+        }, []);
+        // setA(params.name);
 
-    // useShow(() => {
-    //   console.log(instance);
-    //   console.log("show");
-    // });
+        // useShow(() => {
+        //   console.log(instance);
+        //   console.log("show");
+        // });
 
-    // useShareAppMessage(() => {
-    //   console.log("useShareAppMessage");
-    // });
+        // useShareAppMessage(() => {
+        //   console.log("useShareAppMessage");
+        // });
 
-    // useShareTimeline(() => {
-    //   console.log("useShareTimeline");
-    // });
+        // useShareTimeline(() => {
+        //   console.log("useShareTimeline");
+        // });
 
-    // useAddToFavorites(() => {
-    //   console.log("useAddToFavorites");
-    // });
+        // useAddToFavorites(() => {
+        //   console.log("useAddToFavorites");
+        // });
 
-    // useReachBottom(() => {
-    //   console.log("useReachBottom");
-    // });
+        // useReachBottom(() => {
+        //   console.log("useReachBottom");
+        // });
 
-    // usePageScroll(scrollTop => {
-    //   console.log(scrollTop);
-    //   console.log("usePageScroll");
-    // });
+        // usePageScroll(scrollTop => {
+        //   console.log(scrollTop);
+        //   console.log("usePageScroll");
+        // });
 
-    // usePullDownRefresh(() => {
-    //   setCount("usePullDownRefresh");
-    // });
+        // usePullDownRefresh(() => {
+        //   setCount("usePullDownRefresh");
+        // });
 
-    let count1;
-    let xy;
-    comuputeTime(() => {
-      count1 = useMemo(
-        () => {
-          console.log("useMemo get count1");
-          return count + 1;
-        },
-        [count]
-      );
+        let xy;
 
-      xy = useMemo(
-        () => {
-          return x + y;
-        },
-        [x, y]
-      );
-    }, "memo");
+        xy = useMemo(
+            () => {
+                // if (x === 50 && y === 50) {
+                //   console.log('-------------------');
+                //   console.log('-------------------');
+                //   console.log('-------------------');
+                //   console.log('-------------------');
+                //   console.log('-------------------');
+                //   console.log('-------------------');
+                //   console.log('-------------------');
+                //   console.log('-------------------');
+                //   console.log('-------------------');
+                //     return x + y + new Array(1000000).fill("sss");
+                // } else {
+                //     return x + y;
+                // }
+                return x + y;
+            },
+            [x, y]
+        );
 
-    return {
-      data: {
-        count,
-        count1,
-        a,
-        x,
-        y,
-        xy,
-        nums,
-        counts,
-        name,
-        show
-      },
-      methods: {
-        bindtap: ({
-          currentTarget: {
-            dataset: { value }
-          }
-        }) => {
-          setCount(count + +value);
-        },
-        move({ detail: { x, y } }) {
-          // console.log('moveeeee', x, y )
-          // console.log('xxxx', x, y );
-          // console.log('yyyy', x, y);
-          setX(x);
-          setY(y);
-          // setA(20000);
-        },
-        next() {
-          wx.navigateTo({ url: "./native" });
-        },
-        goDrawing() {
-          router.push('./drawing')
+        return {
+            data: {
+                count,
+                a,
+                x,
+                y,
+                xy,
+                nums,
+                counts,
+                name,
+                show
+            },
+            methods: {
+                bindtap: ({
+                    currentTarget: {
+                        dataset: { value }
+                    }
+                }) => {
+                    let count = 0;
+                    let id = setInterval(() => {
+                        if (count === 10) {
+                            clearInterval(id);
+                            return;
+                        }
+
+                        if (count === 5) {
+                            setX(50);
+                            setY(50);
+                        } else {
+                            setX(Math.floor(Math.random() * 1000));
+                            setY(Math.floor(Math.random() * 1000));
+                        }
+
+                        count++;
+                    }, 10);
+                },
+                move({ detail: { x, y } }) {
+                    // console.log('moveeeee', x, y )
+                    // console.log('xxxx', x, y );
+                    // console.log('yyyy', x, y);
+                    setX(x);
+                    setY(y);
+                    // setA(20000);
+                },
+                next() {
+                    wx.navigateTo({ url: "./native" });
+                },
+                goDrawing() {
+                    router.push("./drawing");
+                }
+            }
+        };
+    },
+    {
+        properties: {
+            btnText: {
+                type: String,
+                value: "Add"
+            },
+            value: Number
         }
-      },
-    };
-  },
-  {
-    properties: {
-      btnText: {
-        type: String,
-        value: "Add"
-      },
-      value: Number
     }
-  }
 );
 </script>
 
@@ -265,39 +283,58 @@ withHooks(
 </config>
 
 <template>
-  <view class="page" wx:if="{{show}}" >
-    <A class="aaa" value="{{a}}" name="{{name}}"/>
-    <view class>number :{{count}}</view>
-
-    <view class>useMemo:{{count1}}</view>
-
-    <we-button type="primary" bindtap="bindtap" data-value="1">setCount</we-button>
-    <we-button type="primary" bindtap="setObj" data-value="1">setObj</we-button>
-
-    <view class="page-section">
-      <movable-area style="width:100%;height:500rpx;background:yellow">
-        <movable-view
-          direction="all"
-          bindchange="move"
-          style="width:30%;height:100rpx;background:red"
-        >text</movable-view>
-      </movable-area>
-    </view>
-    <view class style="height: 700px">x：{{x}}；y：{{y}}；x+y：{{xy}}</view>
-
-    <button bindtap="next">next</button>
-    
-    <button bindtap="change">change</button>
-
     <view
-      class
-      wx:for="{{nums}}"
-      wx:key="*this"
-      wx:for-item="item"
-    >num:{{nums[index]}}，count:{{counts[index]}}</view>
+        class="page"
+        wx:if="{{show}}"
+    >
+        <A
+            class="aaa"
+            value="{{a}}"
+            name="{{name}}"
+        />
+        <view class>number :{{count}}</view>
 
-    <we-button type="primary" bindtap="goDrawing" > 下一步 </we-button>
-  </view>
+        <we-button
+            type="primary"
+            bindtap="bindtap"
+            data-value="1"
+        >setCount</we-button>
+        <we-button
+            type="primary"
+            bindtap="setObj"
+            data-value="1"
+        >setObj</we-button>
+
+        <view class="page-section">
+            <movable-area style="width:100%;height:500rpx;background:yellow">
+                <movable-view
+                    direction="all"
+                    bindchange="move"
+                    style="width:30%;height:100rpx;background:red"
+                >text</movable-view>
+            </movable-area>
+        </view>
+        <view
+            class
+            style="height: 700px"
+        >x：{{x}}；y：{{y}}；x+y：{{xy}}</view>
+
+        <button bindtap="next">next</button>
+
+        <button bindtap="change">change</button>
+
+        <view
+            class
+            wx:for="{{nums}}"
+            wx:key="*this"
+            wx:for-item="item"
+        >num:{{nums[index]}}，count:{{counts[index]}}</view>
+
+        <we-button
+            type="primary"
+            bindtap="goDrawing"
+        > 下一步 </we-button>
+    </view>
 </template>
 
 <style>

@@ -82,6 +82,6 @@ export async function getSongList(type) {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       resolve(res);
-    }, 1000);
+    }, 500);
   });
 }

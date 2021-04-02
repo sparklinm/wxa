@@ -26,9 +26,9 @@ function App() {
 
 
 
-  // useEffect(()=>{
-  //   console.log('app effect')
-  // }, [name]);
+  useEffect(()=>{
+    console.log('app effect')
+  }, [obj]);
 
 
   let set = () => {
@@ -42,8 +42,6 @@ function App() {
 
 
 
-    setName(name+1)
-
     // setName((pre)=>{
     //   console.log('pre', pre);
     //   return 555
@@ -54,25 +52,26 @@ function App() {
     //   return 5555
     // })
 
-    obj.a=11111111111111
-    setObj(obj)
-    console.log('ss');
+    // obj.a=11111111111111
+    // setObj({...obj})
 
     // setName((pre,cur)=>{
     //   console.log(pre);
     //   return pre+1
     // });
-
-    // setName(name+1)
-    // setName(name+1)
+    setTimeout(() => {
+      setName(2)
+      setName(3)
+      setName(4)
+    }, 0);
+    
   };
 
   const memoizedValue = useMemo(() => {
-    console.log('memo');
+    console.log(name);
       // Promise.resolve().then(()=>{
       //   console.log('ppp');
       // })
-      setAge(age + 1)
   },[name]);
 
 
@@ -81,7 +80,6 @@ function App() {
       <header className='App-header' onMouseDown={() => set()}>
         <img src={logo} className='App-logo' alt='logo' />
         <Comp name={name}></Comp>
-        {obj.a}
         <p>{name.toString()}</p>
         <a
           className='App-link'

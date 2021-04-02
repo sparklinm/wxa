@@ -1,4 +1,5 @@
 import {firstUpperLetter} from './util';
+import {checkInstance} from './hooks';
 
 const storedPageOptions: WXAHook.StoredPageOptions = {
     onLoad: [],
@@ -41,6 +42,8 @@ function useConstructor(): WXAHook.UseFn {
             fnName = 'use' + firstUpperLetter(key);
         }
         useFn[fnName] = function(cb) {
+            checkInstance();
+
             if (typeof cb === 'function') {
                 if (
                     (key === 'onShareAppMessage' ||

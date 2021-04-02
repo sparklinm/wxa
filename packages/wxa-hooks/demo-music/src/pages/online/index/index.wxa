@@ -17,13 +17,18 @@ import {
     useParams
 } from "@wxa/hooks";
 import { getSongCategory } from "../../../service.js";
+import { getSongList, getSong } from "../../../store.js";
 
 const LIST_URL = "/pages/online/list/index";
+
 
 withHooks(
     () => {
         let [ranks, setRanks] = useState([]);
         let [loading, setLoading] = useState([]);
+        let [songList, setSongList] = useState([]);
+        let [song, setSong] = useState(null);
+
         useEffect(async () => {
             let res = await getSongCategory();
             res.forEach(item => {
@@ -33,8 +38,18 @@ withHooks(
             setLoading(false);
         }, []);
 
+        useShow(() => {
+            song = getSong();
+            songList = getSongList();
+            if (!song) {
+                song = songList[0];
+            }
+            setSong(song);
+            setSongList(songList);
+        });
+
         return {
-            data: { ranks, loading },
+            data: { ranks, loading, song, songList },
             methods: {}
         };
     },
@@ -49,7 +64,8 @@ withHooks(
     "navigationBarTitleText": "歌曲",
     "enablePullDownRefresh" : true,
     "usingComponents":{
-      "custom-navigator": "../../../components/custom-navigator"
+      "custom-navigator": "../../../components/custom-navigator",
+      "player": "../../../components/player"
     }
 }
 </config>
@@ -72,6 +88,10 @@ withHooks(
             加载中...
         </loading>
     </view>
+    <player
+        song="{{song}}"
+        songList="{{songList}}"
+    />
 </template>
 
 <style lang="scss">

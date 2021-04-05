@@ -188,21 +188,20 @@ withHooks(
 
         xy = useMemo(
             () => {
-                // if (x === 50 && y === 50) {
-                //   console.log('-------------------');
-                //   console.log('-------------------');
-                //   console.log('-------------------');
-                //   console.log('-------------------');
-                //   console.log('-------------------');
-                //   console.log('-------------------');
-                //   console.log('-------------------');
-                //   console.log('-------------------');
-                //   console.log('-------------------');
-                //     return x + y + new Array(1000000).fill("sss");
-                // } else {
-                //     return x + y;
-                // }
-                return x + y;
+                if (x === 50 && y === 50) {
+                  console.log('-------------------');
+                  console.log('-------------------');
+                  console.log('-------------------');
+                  console.log('-------------------');
+                  console.log('-------------------');
+                  console.log('-------------------');
+                  console.log('-------------------');
+                  console.log('-------------------');
+                  console.log('-------------------');
+                    return x + y + new Array(1000000).fill("sss暗讽按实际我ss");
+                } else {
+                    return x + y;
+                }
             },
             [x, y]
         );

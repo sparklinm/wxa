@@ -116,9 +116,15 @@ declare namespace WXAHook {
         _$sourceData: IObject;
         _$dom: Map<componentInstance, Set<componentInstance>>,
         _$getPropsValue: () => Record<string, any>,
+        _$id: number|string
     }
 
     interface PreDeclareField {
         relations: Array<[string, Relation['type']]> | Record<string, WechatMiniprogram.Component.RelationOption>
+    }
+
+    interface Node {
+        id: number | string
+        wxInstance: WXAHook.componentInstance | null
     }
 }

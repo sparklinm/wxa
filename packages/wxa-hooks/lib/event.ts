@@ -1,8 +1,6 @@
-import {checkInstance, useInstance} from './hooks';
+import {useInstance} from './hooks';
 
 export function useEvent(name: string): WXAHook.IFunction {
-    checkInstance();
-
     const instance = useInstance();
 
     return (value) => {

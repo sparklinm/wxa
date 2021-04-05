@@ -120,16 +120,18 @@ function withHooks(
             this._$refs = {};
             this._$dom = new Map();
             this._$properties = Object.keys(config.properties);
-            this._$id= Date.now();
-
             // 初始渲染，即第一次执行_$setup
             this._$firstRender = true;
             this._$isSetting = false;
+            this._$destroyed = false;
+            this._$id= Date.now();
 
             let cansetOptionAfter = true;
 
             this._$setup = () => {
-                console.log(this._$id);
+                if (this._$destroyed) {
+                    return;
+                }
 
                 callIndex = 0;
                 // console.time('setup');
@@ -156,6 +158,8 @@ function withHooks(
 
                 console.log('_$sourceData', this._$sourceData);
                 console.log(this);
+                console.log('---path---', this.is);
+
 
                 queueRenderJobs(this._$updateData);
 
@@ -195,15 +199,13 @@ function withHooks(
                 // tslint:disable-next-line: curly
                 if (typeof destroy === 'function') destroy.call(null);
             });
-            this._$state = null;
-            this._$effect = null;
-            this._$setup = null;
-            this._$useMemo = null;
-            this._$dom = null;
-            this._$storagedRelations = null;
-            this._$storedOptions = null;
+            this._$destroyed = true;
         },
         _$updateData() {
+            if (this._$destroyed) {
+                return;
+            }
+
             return new Promise<void>((resolve) => {
                 const sourceData = this._$sourceData;
                 if (isObj(sourceData)) {
@@ -215,17 +217,12 @@ function withHooks(
                     }
 
                     console.log('diffedData', diffedData);
-                    console.log(this);
-
-
-                    console.time('setData');
-
-
                     this.setData(diffedData, () => {
                         console.log('update');
                         resolve();
                     });
-                    console.timeEnd('setData');
+
+                    return;
                 }
                 resolve();
             });
@@ -241,6 +238,10 @@ function withHooks(
             // 在第一次渲染前，也会观察到properties的变化
             // 并且会早于父组件的第一次渲染前
             // 此时传递过来的数据全为空，所以舍弃
+
+            // 另外第一次是在attached中同步setData
+            // 父组件会先于子组件setData
+            // 此时观察到的变化也舍弃，所以第一次setup一定是在attached由组件自己触发。
             if (this._$firstRender) {
                 return;
             }
@@ -330,6 +331,9 @@ function useEffect(effectFn: () => WXAHook.EffectDestroy, deps: WXAHook.Deps): v
     if (effect === undefined) {
         const initEffect = () => {
             const runEffect = () => {
+                if (instance._$destroyed) {
+                    return;
+                }
                 // 清除上一次的 effecct
                 if (typeof effect.destroy === 'function') {
                     effect.destroy();

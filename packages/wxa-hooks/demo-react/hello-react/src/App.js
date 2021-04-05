@@ -1,17 +1,17 @@
-import { useEffect, useState, useMemo } from 'react';
-import logo from './logo.svg';
-import './App.css';
-import { Comp } from './com';
+import { useEffect, useState, useMemo } from 'react'
+import logo from './logo.svg'
+import './App.css'
+import { Comp } from './com'
 
-let a = [1, 2, 3];
+let a = [1, 2, 3]
 function App() {
-  let [name, setName] = useState(1);
-  let [age, setAge] = useState(1);
-  let [obj, setObj] = useState({});
+  let [name, setName] = useState(1)
+  let [age, setAge] = useState(1)
+  let [obj, setObj] = useState({})
 
   // Promise.resolve().then(()=>console.log('resolve'))
   // setName('222');
-  console.log('app');
+  console.log('app')
 
   // useEffect(() => {
   //   setTimeout(() => {
@@ -24,12 +24,9 @@ function App() {
 
   // }, [name]);
 
-
-
-  useEffect(()=>{
+  useEffect(() => {
     console.log('app effect')
-  }, [obj]);
-
+  }, [obj])
 
   let set = () => {
     // setName((pre,cur)=>{
@@ -39,8 +36,6 @@ function App() {
     // process.nextTick(() => {
     //   console.log("ppp");
     // })
-
-
 
     // setName((pre)=>{
     //   console.log('pre', pre);
@@ -63,35 +58,57 @@ function App() {
       setName(2)
       setName(3)
       setName(4)
-    }, 0);
-    
-  };
+    }, 0)
+  }
 
   const memoizedValue = useMemo(() => {
-    console.log(name);
-      // Promise.resolve().then(()=>{
-      //   console.log('ppp');
-      // })
-  },[name]);
-
+    console.log(name)
+    // Promise.resolve().then(()=>{
+    //   console.log('ppp');
+    // })
+  }, [name])
 
   return (
-    <div className='App'>
-      <header className='App-header' onMouseDown={() => set()}>
-        <img src={logo} className='App-logo' alt='logo' />
+    <div className="App">
+      <header className="App-header" onMouseDown={() => set()}>
+        <img src={logo} className="App-logo" alt="logo" />
         <Comp name={name}></Comp>
         <p>{name.toString()}</p>
-        <a
-          className='App-link'
-          href='https://reactjs.org'
-          target='_blank'
-          rel='noopener noreferrer'
-        >
+        <a className="App-link" href="https://reactjs.org" target="_blank" rel="noopener noreferrer">
           Learn React
         </a>
       </header>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
+
+function fn() {
+  return 5
+}
+
+async function fff() {
+  await Promise.all([])
+}
+
+
+async function mmm() {
+  await fff()
+  console.log('1')
+}
+
+
+mmm()
+console.log('2');
+
+// let count = 5
+
+// let timer = setInterval(() => {
+//   if (count < 0) {
+//     clearInterval(timer)
+//   }
+//   count--
+//   console.log('2')
+//   fff()
+// }, 1000)

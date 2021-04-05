@@ -2,8 +2,8 @@ export function firstUpperLetter(str: string): string {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-export function isObj(e: any): boolean {
-    return '[object Object]' === toString.call(e);
+export function isObj(e: unknown): boolean {
+    return '[object Object]' === Object.prototype.toString.call(e);
 }
 
 // eslint-disable-next-line max-len

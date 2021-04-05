@@ -30,14 +30,14 @@ withHooks(
     ({ song, songList }) => {
         let [showBtnPause, setShowBtnPause] = useState(false);
         let [seconds, setSeconds] = useState(0);
-        let [curSong, setCurSong] = useState(null);
+        let [curSong, setCurSong] = useState(song);
         let [curIndex, setCurIndex] = useState(0);
         let [totalSeconds, setTotalSeconds] = useState(0);
         let [playStatus, setPlayStatus] = useState("none");
         let musicRef = useRef();
         let timerRef = useRef();
 
-        useEffect(
+        useMemo(
             () => {
                 let index = songList.findIndex(
                     item => item.song_id === song.song_id

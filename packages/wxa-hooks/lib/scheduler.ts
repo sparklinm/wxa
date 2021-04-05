@@ -28,6 +28,12 @@ let isTasking = false;
 // 微任务队列中执行setup
 // 然后尝试渲染
 
+function nextTick(fn:WXAHook.IFunction) {
+    Promise.resolve().then(()=>{
+        fn && fn();
+    });
+}
+
 function setNewTask() {
     newTask = tasks[newTaskIndex];
     if (!newTask) {
@@ -52,7 +58,7 @@ export function queueSetupJobsAsync(job: WXAHook.IFunction): undefined {
     isSetting = true;
 
     // 合并一个tick中的setup任务
-    Promise.resolve().then(() => {
+    nextTick(()=>{
         flushJobs(newTask.setupJobs);
         isSetting = false;
         newTaskIndex++;
@@ -90,6 +96,8 @@ export function queueSetupJobsFirst(job: WXAHook.IFunction): void {
     newTask.setupJobs.push(job);
 
     flushJobs(newTask.setupJobs);
+
+    currentTaskIndex = newTaskIndex;
     newTaskIndex++;
     directRender();
 }
@@ -117,22 +125,16 @@ async function directRender() {
     const {renderJobs, postJobS} = currentTask;
 
     console.log('currentTask', 'renderJobs', renderJobs, 'postJobs', postJobS);
-    console.time('----render----');
+
     await flushAsyncJobs(renderJobs);
-    console.timeEnd('----render----');
 
     flushJobs(postJobS);
-
-    currentTaskIndex++;
 }
 
 
-// 永远都只会是推入一个任务渲染一个任务
-// 渲染后的行为会被放入一个微任务队列，而新增的渲染任务也是经过微任务（或者宏任务队列合并的）
-// 这表明，新的渲染任务一定会在上次渲染后，再被推入队列
 // 如果实例本应被销毁，这里还存有实例的渲染，那实例不会被销毁
 async function waitRender() {
-    console.log('currentTask', currentTaskIndex, tasks);
+    console.log('currentTask', currentTaskIndex, tasks[currentTaskIndex]);
 
     currentTask = tasks[currentTaskIndex];
 
@@ -142,16 +144,15 @@ async function waitRender() {
 
     const {renderJobs, postJobS} = currentTask;
 
-    if (isRendering || renderJobs.length === 0) {
+    if (isRendering) {
         return;
     }
 
     console.log('currentTask', 'renderJobs', renderJobs, 'postJobs', postJobS);
-    console.time('----render----');
+
     isRendering = true;
     await flushAsyncJobs(renderJobs);
     isRendering = false;
-    console.timeEnd('----render----');
 
     flushJobs(postJobS);
 
@@ -172,18 +173,32 @@ function flushJobs(jobs: WXAHook.IFunction[]) {
     flushJobs(jobs);
 }
 
+
 async function flushAsyncJobs(jobs: WXAHook.IFunction[]) {
     if (jobs.length === 0) {
         return;
     }
 
-    const currentJobs = new Set(jobs);
-    jobs.length = 0;
-
     const promises = [];
-    currentJobs.forEach((job) => {
-        promises.push(job());
-    });
 
+    function doFlush(jobs: WXAHook.IFunction[]) {
+        if (jobs.length === 0) {
+            return;
+        }
+
+        const currentJobs = new Set(jobs);
+        jobs.length = 0;
+
+        currentJobs.forEach((job) => {
+            // 执行job，可能会setData
+            // 如果setData，可能会同步触发子组件的setup，添加子组件的渲染任务
+            // 所以需要继续setData子组件
+            promises.push(job());
+            doFlush(jobs);
+        });
+    }
+
+    doFlush(jobs);
     await Promise.all(promises);
 }
+

@@ -6,6 +6,11 @@ export function isObj(e: unknown): boolean {
     return '[object Object]' === Object.prototype.toString.call(e);
 }
 
+export function isPromise(e: unknown): boolean {
+    return '[object Promise]' === Object.prototype.toString.call(e);
+}
+
+
 // eslint-disable-next-line max-len
 export function depsChanged(deps: WXAHook.Deps, lastDeps: WXAHook.Deps): boolean {
     if (!deps || !lastDeps) {

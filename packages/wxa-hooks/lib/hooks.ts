@@ -11,7 +11,7 @@ import {
 } from './nativeOptions';
 import {isObj, depsChanged} from './util';
 import {
-    queueSetupJobsAsync, queuePostJobs, queueRenderJobs, queueSetupJobsFirst,
+    queueSetupJobsAsync, queuePostJobs, queueRenderJobs, reomveInvalidTask,
 } from './scheduler';
 
 let currentComInstance: WXAHook.componentInstance = null;
@@ -124,11 +124,12 @@ function withHooks(
             this._$firstRender = true;
             this._$isSetting = false;
             this._$destroyed = false;
-            this._$id= Date.now();
+            this._$id= this.is + Date.now().toString(16);
+            this._$updateData.id = this._$id;
 
             let cansetOptionAfter = true;
 
-            this._$setup = () => {
+            const _$setup = () => {
                 if (this._$destroyed) {
                     return;
                 }
@@ -157,7 +158,7 @@ function withHooks(
                 this._$sourceData = JSON.parse(JSON.stringify(data));
 
                 console.log('_$sourceData', this._$sourceData);
-                console.log(this);
+                // console.log(this);
                 console.log('---path---', this.is);
 
 
@@ -167,6 +168,9 @@ function withHooks(
 
                 // console.timeEnd('setup');
             };
+
+            _$setup.id = this._$id;
+            this._$setup = _$setup;
 
             this._$getPropsValue = () => {
                 const props = {};
@@ -179,7 +183,7 @@ function withHooks(
             console.log('created setup');
         },
         attached() {
-            queueSetupJobsFirst(this._$setup);
+            queueSetupJobsAsync(this._$setup, true);
             // const parent = this.selectOwnerComponent() as WXAHook.componentInstance;
             // if (!parent) {
             //     return;
@@ -200,32 +204,30 @@ function withHooks(
                 if (typeof destroy === 'function') destroy.call(null);
             });
             this._$destroyed = true;
+
+            reomveInvalidTask(this._$id);
         },
         _$updateData() {
             if (this._$destroyed) {
                 return;
             }
 
-            return new Promise<void>((resolve) => {
-                const sourceData = this._$sourceData;
-                if (isObj(sourceData)) {
-                    const diffedData = diff.bind(this)(sourceData);
+            const sourceData = this._$sourceData;
+            if (isObj(sourceData)) {
+                const diffedData = diff.bind(this)(sourceData);
 
-                    if (Object.keys(diffedData || {}).length === 0) {
-                        resolve();
-                        return;
-                    }
+                if (Object.keys(diffedData || {}).length === 0) {
+                    return;
+                }
 
-                    console.log('diffedData', diffedData);
+                console.log('diffedData', diffedData);
+                return new Promise<void>((resolve) => {
                     this.setData(diffedData, () => {
                         console.log('update');
                         resolve();
                     });
-
-                    return;
-                }
-                resolve();
-            });
+                });
+            }
         },
     };
 
@@ -247,7 +249,8 @@ function withHooks(
             }
 
             log('observer change', Object.keys(config.properties).join(','));
-            this._$setup();
+            // this._$setup();
+            queueSetupJobsAsync(this._$setup, true);
         };
     }
 
@@ -344,6 +347,8 @@ function useEffect(effectFn: () => WXAHook.EffectDestroy, deps: WXAHook.Deps): v
                     effect.destroy = effect.cb.call(null);
                 }
             };
+
+            runEffect.id = instance._$id;
 
             effect = {
                 run: runEffect,

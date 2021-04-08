@@ -16,7 +16,10 @@ declare namespace WXAHook {
 
     type componentInstance = WXAComponentInstance | WXAPageInstance;
 
-    type componentOptions = Pick<ComponentOptions, 'properties' | 'options' | 'externalClasses'>;
+    type componentOptions = Pick<
+    ComponentOptions,
+    'properties' | 'options' | 'externalClasses'
+    >;
 
     type componentConfig = {
         data?: Data;
@@ -84,12 +87,12 @@ declare namespace WXAHook {
     }
 
     interface SetStateCb {
-        (preValue: unknown): unknown
+        (preValue: unknown): unknown;
     }
 
     interface Effect {
         destroy?: EffectDestroy;
-        cb: IFunction,
+        cb: IFunction;
         lastDeps: Deps;
         run: IFunction;
     }
@@ -107,24 +110,32 @@ declare namespace WXAHook {
     interface HookAttrs {
         _$state?: Record<string, State>;
         _$effect?: Record<string, Effect>;
-        _$properties?: string[],
-        _$setup?: () => void;
+        _$properties?: string[];
+        _$setup?: {
+            (): void;
+            id: string;
+        };
         _$useMemo?: Record<string, Memo>;
         _$storedOptions: StoredPageOptions & StoredComponentOptions;
         _$storagedRelations: StoredRelations;
-        _$updateData: (this: WXAHook.componentInstance) => Promise<void>;
+        _$updateData: {
+            (this: WXAHook.componentInstance): Promise<void>;
+            id: string;
+        };
         _$sourceData: IObject;
-        _$dom: Map<componentInstance, Set<componentInstance>>,
-        _$getPropsValue: () => Record<string, any>,
-        _$id: number|string
+        _$dom: Map<componentInstance, Set<componentInstance>>;
+        _$getPropsValue: () => Record<string, any>;
+        _$id: string;
     }
 
     interface PreDeclareField {
-        relations: Array<[string, Relation['type']]> | Record<string, WechatMiniprogram.Component.RelationOption>
+        relations:
+        | Array<[string, Relation['type']]>
+        | Record<string, WechatMiniprogram.Component.RelationOption>;
     }
 
     interface Node {
-        id: number | string
-        wxInstance: WXAHook.componentInstance | null
+        id: number | string;
+        wxInstance: WXAHook.componentInstance | null;
     }
 }

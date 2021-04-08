@@ -42,7 +42,9 @@ withHooks(
                 let index = songList.findIndex(
                     item => item.song_id === song.song_id
                 );
+                console.log('-------------1-------------');
                 setCurIndex(index);
+                console.log('-------------2-------------');
                 setCurSong(song);
             },
             [song]

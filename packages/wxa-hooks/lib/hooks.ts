@@ -11,13 +11,13 @@ import {
 } from './nativeOptions';
 import {isObj, depsChanged} from './util';
 import {
-    queueSetupJobsAsync, queuePostJobs, queueRenderJobs, reomveInvalidTask,
+    queueSetupJobs, queuePostJobs, queueRenderJobs, reomveInvalidTask,
 } from './scheduler';
 
 let currentComInstance: WXAHook.componentInstance = null;
 let callIndex = 0;
 
-const checkInstance = ():void => {
+const checkInstance = (): void => {
     // tslint:disable-next-line: curly
     if (!currentComInstance) throw new Error('Component instance not found');
 };
@@ -124,8 +124,33 @@ function withHooks(
             this._$firstRender = true;
             this._$isSetting = false;
             this._$destroyed = false;
-            this._$id= this.is + Date.now().toString(16);
-            this._$updateData.id = this._$id;
+            this._$id = this.is + '-' + Date.now().toString(32);
+
+            const _$updateData = () => {
+                if (this._$destroyed) {
+                    return;
+                }
+
+                const sourceData = this._$sourceData;
+                if (isObj(sourceData)) {
+                    const diffedData = diff.bind(this)(sourceData);
+
+                    if (Object.keys(diffedData || {}).length === 0) {
+                        return;
+                    }
+
+                    console.log('diffedData', diffedData);
+                    return new Promise<void>((resolve) => {
+                        this.setData(diffedData, () => {
+                            console.log('update');
+                            resolve();
+                        });
+                    });
+                }
+            };
+            _$updateData.id = this._$id;
+            _$updateData.instance = this;
+            this._$updateData = _$updateData;
 
             let cansetOptionAfter = true;
 
@@ -161,7 +186,6 @@ function withHooks(
                 // console.log(this);
                 console.log('---path---', this.is);
 
-
                 queueRenderJobs(this._$updateData);
 
                 this._$firstRender = false;
@@ -183,7 +207,7 @@ function withHooks(
             console.log('created setup');
         },
         attached() {
-            queueSetupJobsAsync(this._$setup, true);
+            queueSetupJobs(this._$setup, true);
             // const parent = this.selectOwnerComponent() as WXAHook.componentInstance;
             // if (!parent) {
             //     return;
@@ -207,28 +231,6 @@ function withHooks(
 
             reomveInvalidTask(this._$id);
         },
-        _$updateData() {
-            if (this._$destroyed) {
-                return;
-            }
-
-            const sourceData = this._$sourceData;
-            if (isObj(sourceData)) {
-                const diffedData = diff.bind(this)(sourceData);
-
-                if (Object.keys(diffedData || {}).length === 0) {
-                    return;
-                }
-
-                console.log('diffedData', diffedData);
-                return new Promise<void>((resolve) => {
-                    this.setData(diffedData, () => {
-                        console.log('update');
-                        resolve();
-                    });
-                });
-            }
-        },
     };
 
     config.observers = config.observers || {};
@@ -250,7 +252,7 @@ function withHooks(
 
             log('observer change', Object.keys(config.properties).join(','));
             // this._$setup();
-            queueSetupJobsAsync(this._$setup, true);
+            queueSetupJobs(this._$setup);
         };
     }
 
@@ -278,7 +280,6 @@ function useState<T extends WXAHook.IType>(init: T): [T, WXAHook.IFunction] {
     const index = callIndex++;
     const instance = currentComInstance;
 
-
     let state = instance._$state[index];
 
     // initialState;
@@ -288,7 +289,7 @@ function useState<T extends WXAHook.IType>(init: T): [T, WXAHook.IFunction] {
                 value: undefined,
                 tracks: [init],
                 get() {
-                    state.tracks.forEach((track)=>{
+                    state.tracks.forEach((track) => {
                         dispatch(state, track);
                     });
 
@@ -310,7 +311,7 @@ function useState<T extends WXAHook.IType>(init: T): [T, WXAHook.IFunction] {
             return;
         }
         state.tracks.push(value);
-        queueSetupJobsAsync(instance._$setup);
+        queueSetupJobs(instance._$setup);
     };
 
     state.get();

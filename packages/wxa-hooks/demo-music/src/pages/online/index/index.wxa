@@ -28,6 +28,8 @@ withHooks(
         let [loading, setLoading] = useState([]);
         let [songList, setSongList] = useState([]);
         let [song, setSong] = useState(null);
+        let instance = useInstance()
+
 
         useEffect(async () => {
             let res = await getSongCategory();
@@ -36,6 +38,25 @@ withHooks(
             });
             setRanks(res);
             setLoading(false);
+
+            setTimeout(() => {
+                console.log(instance.groupSetData);
+                console.log(instance);
+
+                // instance.groupSetData(()=>{
+                //     instance.setData({
+                //         x :1
+                //     },()=>{
+                //         console.log(1);
+                //     })
+                //     instance.setData({
+                //         x :2
+                //     },()=>{
+                //         console.log(2);
+                //     })
+                // })
+            }, 2000);
+
         }, []);
 
         useShow(() => {

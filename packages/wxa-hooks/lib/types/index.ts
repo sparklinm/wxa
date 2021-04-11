@@ -107,6 +107,12 @@ declare namespace WXAHook {
         methods?: Record<string, IFunction>;
     }
 
+    interface _$updateData {
+        (): Promise<void>;
+        id: string;
+        instance: WXAHook.componentInstance
+    }
+
     interface HookAttrs {
         _$state?: Record<string, State>;
         _$effect?: Record<string, Effect>;
@@ -118,10 +124,7 @@ declare namespace WXAHook {
         _$useMemo?: Record<string, Memo>;
         _$storedOptions: StoredPageOptions & StoredComponentOptions;
         _$storagedRelations: StoredRelations;
-        _$updateData: {
-            (this: WXAHook.componentInstance): Promise<void>;
-            id: string;
-        };
+        _$updateData:_$updateData
         _$sourceData: IObject;
         _$dom: Map<componentInstance, Set<componentInstance>>;
         _$getPropsValue: () => Record<string, any>;

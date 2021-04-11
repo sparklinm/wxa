@@ -1,9 +1,9 @@
 import {isPromise} from './util';
 interface Task {
-    setupJobs: WXAHook.IFunction[];
-    preJobs: WXAHook.IFunction[];
-    renderJobs: WXAHook.IFunction[];
-    postJobS: WXAHook.IFunction[];
+    setupJobs: WXAHook.IFunction[]
+    preJobs: WXAHook.IFunction[]
+    renderJobs: WXAHook._$updateData[]
+    postJobS: WXAHook.IFunction[]
 }
 
 const tasks: Task[] = [];
@@ -21,11 +21,9 @@ let currentTask: Task = {
     renderJobs: [],
     postJobS: [],
 };
-let willSet = false;
-let isSetting = false;
+let willSetup = false;
 let isRendering = false;
-let isTasking = false;
-let isOneTick = true;
+let isRenderTick = true;
 let isImmediateRender = false;
 
 // 同步代码中的setup被合并
@@ -79,63 +77,69 @@ export function reomveInvalidTask(id: string): void {
 
 // 放入setup任务
 // 根据策略执行setup任务
-export function queueSetupJobsAsync(
-    job: WXAHook.IFunction,
-    immediateRender = false,
-): void {
-    console.log(newTaskIndex, tasks.length);
-    console.log(isOneTick);
-
+// setup任务会产生render任务和post任务
+export function queueSetupJobs(job: WXAHook.IFunction, immediateRender = false): void {
+    // 立即执行setup，然后立即执行setData
+    // 用于组件在attached实例中第一次执行setup时（主要是要兼容hook组件使用原生组件的情况，需要立刻执行）
     if (immediateRender) {
-        isOneTick = true;
+        isRenderTick = true;
         isImmediateRender = true;
-    }
-
-    if (isOneTick) {
-        setNewTask();
-        newTask.setupJobs.push(job);
-
-        if (isSetting) {
-            return;
-        }
-
-        isSetting = true;
-        flushJobs(newTask.setupJobs);
-        isSetting = false;
-
-        waitRender();
+        queueSetupAndRun(job);
+        render();
+    } else if (isRenderTick) {
+        // 只是放入setup任务
+        // 当第一个setup执行时，后续无论是setup产生的setup
+        // 或是setData产生的setup
+        // 都只是单纯放入队列
+        queueSetup(job);
     } else {
-        setNewTask();
-
-        newTask.setupJobs.push(job);
-
-        if (willSet) {
-            return;
-        }
-
-        willSet = true;
-
-        // 合并一个tick中的setup任务
-        nextTick(() => {
-            isOneTick = true;
-            isSetting = true;
-            flushJobs(newTask.setupJobs);
-            isSetting = false;
-            willSet = false;
-            waitRender();
-        });
+        // 下一个tick执行同步代码中放入的所有setup
+        // 用于setState时，放入的setup
+        queueSetupAndDeferRun(job);
     }
 }
 
-// 如果实例本应被销毁，这里还存有实例的渲染，那实例不会被销毁
-async function waitRender() {
-    console.log(
-        'currentTask',
-        currentTaskIndex,
-        tasks[currentTaskIndex],
-        tasks,
-    );
+function queueSetupAndDeferRun(job) {
+    queueSetup(job);
+    if (willSetup) {
+        return;
+    }
 
+    willSetup = true;
+
+    // 合并一个tick中的setup任务
+    nextTick(() => {
+        isRenderTick = true;
+        flushJobs(newTask.setupJobs);
+        willSetup = false;
+        tryRender();
+    });
+}
+
+function queueSetupAndRun(job) {
+    queueSetup(job);
+    flushJobs(newTask.setupJobs);
+}
+
+function queueSetup(job) {
+    setNewTask();
+    newTask.setupJobs.push(job);
+}
+
+function checkCanRender() {
+    return !isRendering || isImmediateRender;
+}
+
+function tryRender() {
+    if (checkCanRender()) {
+        render();
+        return;
+    }
+
+    isRenderTick = false;
+}
+
+function autoNextRender() {
     currentTask = tasks[currentTaskIndex];
 
     if (!currentTask) {
@@ -143,30 +147,35 @@ async function waitRender() {
         return;
     }
 
+    isRenderTick = true;
+    render();
+}
+
+// 如果实例本应被销毁，这里还存有实例的渲染，那实例不会被销毁
+async function render() {
+    console.log('currentTask', currentTaskIndex, tasks[currentTaskIndex], tasks);
+
+    currentTask = tasks[currentTaskIndex];
+
     const {renderJobs} = currentTask;
 
-    if (isRendering && !isImmediateRender) {
-        return;
-    }
-
     // console.log('currentTask', 'renderJobs', renderJobs, 'postJobs', postJobS);
-
-    mergeRenderJobs(renderJobs);
+    flushRenderJobs(renderJobs);
     afterRender();
 }
 
 async function afterRender() {
-    if (isMerging) {
+    if (willPostRender) {
         return;
     }
 
-    isMerging = true;
+    willPostRender = true;
 
     nextTick(async () => {
         console.log('-----------tick---------------');
 
-        isOneTick = false;
-        isMerging = false;
+        isRenderTick = false;
+        willPostRender = false;
         isImmediateRender = false;
 
         newTaskIndex++;
@@ -182,27 +191,29 @@ async function afterRender() {
         flushJobs(postJobS);
 
         currentTaskIndex++;
-        waitRender();
+        autoNextRender();
     });
 }
 
 const tickRenderPromises = [];
-let isMerging = false;
+let willPostRender = false;
 
 // 执行job，可能会setData
 // 如果setData，可能会同步触发子组件的setup，添加子组件的渲染任务
 // 所以需要继续setData子组件
 // 渲染任务返回一个promise，这里将同步代码产生的promise存储到一个数组
 // 在微任务队列中，等到所有promise resolved完毕，执行effect任务
-function mergeRenderJobs(jobs) {
-    function doFlush(jobs: WXAHook.IFunction[]) {
-        if (jobs.length === 0) {
-            return;
-        }
+function flushRenderJobs(jobs: WXAHook._$updateData[]) {
+    if (jobs.length === 0) {
+        return;
+    }
 
-        const currentJobs = new Set(jobs);
-        jobs.length = 0;
+    const currentJobs = [...new Set(jobs)];
+    jobs.length = 0;
 
+    const instance = currentJobs[0].instance;
+
+    instance.groupSetData(()=>{
         currentJobs.forEach((job) => {
             const res = job && job();
 
@@ -210,9 +221,12 @@ function mergeRenderJobs(jobs) {
                 tickRenderPromises.push(res);
             }
         });
-    }
+    });
 
-    doFlush(jobs);
+    // 执行setData，会产生子组件的setup，执行子组件的setup
+    flushJobs(newTask.setupJobs);
+    // 执行由setup产生的setData
+    flushRenderJobs(jobs);
 }
 
 function flushJobs(jobs: WXAHook.IFunction[]) {
@@ -228,7 +242,7 @@ function flushJobs(jobs: WXAHook.IFunction[]) {
     flushJobs(jobs);
 }
 
-export function queueRenderJobs(job: WXAHook.IFunction): void {
+export function queueRenderJobs(job: WXAHook._$updateData): void {
     newTask.renderJobs.push(job);
 }
 
@@ -238,24 +252,4 @@ export function queuePreJobs(job: WXAHook.IFunction): void {
 
 export function queuePostJobs(job: WXAHook.IFunction): void {
     newTask.postJobS.push(job);
-}
-
-export function queueSetupJobsSync(job: WXAHook.IFunction): void {
-    setNewTask();
-    newTask.setupJobs.push(job);
-
-    flushJobs(newTask.setupJobs);
-
-    if (isTasking) {
-        return;
-    }
-
-    isTasking = true;
-
-    // 合并20ms内的渲染任务
-    setTimeout(() => {
-        isTasking = false;
-        waitRender();
-        newTaskIndex++;
-    }, 20);
 }

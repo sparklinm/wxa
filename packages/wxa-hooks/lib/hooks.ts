@@ -109,7 +109,6 @@ function withHooks(
 ): WXAHook.IObject {
     // tslint:disable-next-line: no-empty
     setup = typeof setup === 'function' ? setup : () => ({});
-    console.time('[with Hook] before' + setup.name);
 
     const config: WXAHook.componentConfig = {
         ...options,
@@ -139,12 +138,16 @@ function withHooks(
                         return;
                     }
 
-                    console.log('diffedData', diffedData);
+                    // console.log('diffedData', diffedData);
+
                     return new Promise<void>((resolve) => {
+                        console.time('[setData]');
+
                         this.setData(diffedData, () => {
-                            console.log('update');
+                            // console.log('update');
                             resolve();
                         });
+                        console.timeEnd('[setData]');
                     });
                 }
             };
@@ -182,9 +185,8 @@ function withHooks(
                 // console.timeEnd('setup');
                 this._$sourceData = JSON.parse(JSON.stringify(data));
 
-                console.log('_$sourceData', this._$sourceData);
-                // console.log(this);
-                console.log('---path---', this.is);
+                // console.log('_$sourceData', this._$sourceData);
+                // console.log('---path---', this._$id);
 
                 queueRenderJobs(this._$updateData);
 
@@ -203,8 +205,6 @@ function withHooks(
                 });
                 return props;
             };
-
-            console.log('created setup');
         },
         attached() {
             queueSetupJobs(this._$setup, true);
@@ -250,7 +250,7 @@ function withHooks(
                 return;
             }
 
-            log('observer change', Object.keys(config.properties).join(','));
+            // log('observer change', Object.keys(config.properties).join(','));
             // this._$setup();
             queueSetupJobs(this._$setup);
         };
@@ -260,8 +260,6 @@ function withHooks(
         // TODOS: 兼容原生写法
         relations: config.relations,
     });
-    console.timeEnd('[with Hook] before' + setup.name);
-    console.log('config', config);
 
     return wxa.launchComponent(config);
 }

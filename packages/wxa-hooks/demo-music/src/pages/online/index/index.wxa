@@ -40,8 +40,8 @@ withHooks(
             setLoading(false);
 
             setTimeout(() => {
-                console.log(instance.groupSetData);
-                console.log(instance);
+                // console.log(instance.groupSetData);
+                // console.log(instance);
 
                 // instance.groupSetData(()=>{
                 //     instance.setData({

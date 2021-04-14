@@ -1,34 +1,53 @@
 import {isPromise} from './util';
 interface Task {
-    setupJobs: WXAHook.IFunction[]
-    preJobs: WXAHook.IFunction[]
-    renderJobs: WXAHook._$updateData[]
-    postJobS: WXAHook.IFunction[]
+    setupJobs: WXAHook.IFunction[];
+    preJobs: WXAHook.IFunction[];
+    renderJobs: WXAHook._$updateData[];
+    postJobs: WXAHook.IFunction[];
 }
 
 const tasks: Task[] = [];
+
+// 优先级任务，attached 中的 setup 放入其中
+// 永远是放入一个setup任务就立刻执行
+// priorityTask 中的自身实例 setData 必不会生成新的 setup
+const priorityTask: Task = {
+    setupJobs: [],
+    preJobs: [],
+    renderJobs: [],
+    postJobs: [],
+};
+
+// 新任务，总是执行末尾
 let newTaskIndex = 0;
 let newTask: Task = {
     setupJobs: [],
     preJobs: [],
     renderJobs: [],
-    postJobS: [],
+    postJobs: [],
 };
-let currentTaskIndex = 0;
-let currentTask: Task = {
+
+// 渲染任务，每渲染一个后自动+1
+let renderingTaskIndex = 0;
+let renderingTask: Task = {
     setupJobs: [],
     preJobs: [],
     renderJobs: [],
-    postJobS: [],
+    postJobs: [],
 };
+
+// 当前操纵的task，可能是 renderingTask, newTask, priorityTask
+let currentTask:Task = null;
+
+let renderNums = 0;
+const maxRenderNums = 15;
+
 let willSetup = false;
 let isRendering = false;
-let isRenderTick = true;
-let isImmediateRender = false;
-
-// 同步代码中的setup被合并
-// 微任务队列中执行setup
-// 然后尝试渲染
+let isRenderTick = false;
+let isFlushingRenderJobs = false;
+let isFlushingSetupJobs = false;
+let isFlushingNormalRenderJobs = false;
 
 function nextTick(fn: WXAHook.IFunction) {
     Promise.resolve().then(() => {
@@ -43,7 +62,7 @@ function setNewTask() {
             setupJobs: [],
             preJobs: [],
             renderJobs: [],
-            postJobS: [],
+            postJobs: [],
         };
         tasks[newTaskIndex] = newTask;
     }
@@ -52,18 +71,18 @@ function setNewTask() {
 function initTask() {
     // 重置task
     tasks.length = 0;
-    currentTaskIndex = 0;
+    renderingTaskIndex = 0;
     newTaskIndex = 0;
     newTask = {
         setupJobs: [],
         preJobs: [],
         renderJobs: [],
-        postJobS: [],
+        postJobs: [],
     };
 }
 
 export function reomveInvalidTask(id: string): void {
-    for (let i = currentTaskIndex; i < tasks.length; i++) {
+    for (let i = renderingTaskIndex; i < tasks.length; i++) {
         const task = tasks[i];
         Object.keys(task).forEach((key) => {
             tasks[key].forEach((fn, index) => {
@@ -78,20 +97,26 @@ export function reomveInvalidTask(id: string): void {
 // 放入setup任务
 // 根据策略执行setup任务
 // setup任务会产生render任务和post任务
-export function queueSetupJobs(job: WXAHook.IFunction, immediateRender = false): void {
+export function queueSetupJobs(
+    job: WXAHook.IFunction,
+    immediateRender = false,
+): void {
     // 立即执行setup，然后立即执行setData
     // 用于组件在attached实例中第一次执行setup时（主要是要兼容hook组件使用原生组件的情况，需要立刻执行）
     if (immediateRender) {
-        isRenderTick = true;
-        isImmediateRender = true;
-        queueSetupAndRun(job);
-        render();
+        queuePrioritySetup(job);
+        priorityRender();
     } else if (isRenderTick) {
-        // 只是放入setup任务
         // 当第一个setup执行时，后续无论是setup产生的setup
         // 或是setData产生的setup
         // 都只是单纯放入队列
-        queueSetup(job);
+        if (isFlushingRenderJobs || isFlushingSetupJobs) {
+            queueSetup(job);
+        } else {
+            // 在最后一个setData，之后产生的setup
+            // 都放入到新任务队列中
+            queueSetupAndDeferRun(job);
+        }
     } else {
         // 下一个tick执行同步代码中放入的所有setup
         // 用于setState时，放入的setup
@@ -99,8 +124,12 @@ export function queueSetupJobs(job: WXAHook.IFunction, immediateRender = false):
     }
 }
 
+
 function queueSetupAndDeferRun(job) {
+    setNewTask();
+    currentTask = newTask;
     queueSetup(job);
+
     if (willSetup) {
         return;
     }
@@ -110,39 +139,53 @@ function queueSetupAndDeferRun(job) {
     // 合并一个tick中的setup任务
     nextTick(() => {
         isRenderTick = true;
-        flushJobs(newTask.setupJobs);
         willSetup = false;
+        newTaskIndex++;
+
+        console.log('[one-task-start]');
+        console.time('[one-task-duration]');
+
+        flushSetupJobs(currentTask.setupJobs);
+
         tryRender();
+        console.timeEnd('[one-task-duration]');
     });
 }
 
-function queueSetupAndRun(job) {
+function queuePrioritySetup(job) {
+    currentTask = priorityTask;
     queueSetup(job);
-    flushJobs(newTask.setupJobs);
+
+    isRenderTick = true;
+
+    flushSetupJobs(currentTask.setupJobs);
 }
 
 function queueSetup(job) {
-    setNewTask();
-    newTask.setupJobs.push(job);
-}
-
-function checkCanRender() {
-    return !isRendering || isImmediateRender;
+    currentTask.setupJobs.push(job);
 }
 
 function tryRender() {
-    if (checkCanRender()) {
+    if (!isRendering) {
         render();
-        return;
+    } else {
+        isRenderTick = false;
     }
-
-    isRenderTick = false;
 }
 
 function autoNextRender() {
-    currentTask = tasks[currentTaskIndex];
+    renderingTask = tasks[renderingTaskIndex];
 
-    if (!currentTask) {
+    // 恢复上一次中断的setup
+    if (renderingTask.setupJobs.length) {
+        continueRender();
+        return;
+    }
+
+    renderingTaskIndex++;
+    renderingTask = tasks[renderingTaskIndex];
+
+    if (!renderingTask) {
         initTask();
         return;
     }
@@ -151,52 +194,106 @@ function autoNextRender() {
     render();
 }
 
+function continueRender() {
+    isRenderTick = true;
+
+    renderingTask = tasks[renderingTaskIndex];
+    currentTask = renderingTask;
+
+    flushSetupJobs(currentTask.setupJobs);
+
+    render();
+}
+
 // 如果实例本应被销毁，这里还存有实例的渲染，那实例不会被销毁
 async function render() {
-    console.log('currentTask', currentTaskIndex, tasks[currentTaskIndex], tasks);
+    // console.log(
+    //     'renderingTask',
+    //     renderingTaskIndex,
+    //     tasks[renderingTaskIndex],
+    //     tasks,
+    // );
 
-    currentTask = tasks[currentTaskIndex];
+    renderingTask = tasks[renderingTaskIndex];
+    currentTask = renderingTask;
 
-    const {renderJobs} = currentTask;
+    const {renderJobs} = renderingTask;
 
-    // console.log('currentTask', 'renderJobs', renderJobs, 'postJobs', postJobS);
+    isFlushingNormalRenderJobs = true;
     flushRenderJobs(renderJobs);
+    isFlushingNormalRenderJobs = false;
+
     afterRender();
 }
 
 async function afterRender() {
-    if (willPostRender) {
+    if (willPostJobs) {
         return;
     }
 
-    willPostRender = true;
+    willPostJobs = true;
 
     nextTick(async () => {
-        console.log('-----------tick---------------');
-
         isRenderTick = false;
-        willPostRender = false;
-        isImmediateRender = false;
-
-        newTaskIndex++;
+        willPostJobs = false;
 
         isRendering = true;
         const promises = [...tickRenderPromises];
         tickRenderPromises.length = 0;
         await Promise.all(promises);
-
         isRendering = false;
 
-        const {postJobS} = currentTask;
-        flushJobs(postJobS);
+        const {postJobs: normalPostJobS} = renderingTask;
+        const {postJobs: priorityPostJobs} = priorityTask;
+        const postJobs=[...priorityPostJobs, ...normalPostJobS];
+        normalPostJobS.length = 0;
+        priorityPostJobs.length = 0;
 
-        currentTaskIndex++;
+        flushJobs(postJobs);
+
         autoNextRender();
     });
 }
 
+
+async function priorityRender() {
+    const {renderJobs} = currentTask;
+
+    flushRenderJobs(renderJobs);
+
+    if (isFlushingNormalRenderJobs) {
+        currentTask = renderingTask;
+    } else {
+        afterPriorityRender();
+    }
+}
+
+async function afterPriorityRender() {
+    if (willPostJobs) {
+        return;
+    }
+
+    willPostJobs = true;
+
+    nextTick(async () => {
+        isRenderTick = false;
+        willPostJobs = false;
+
+        isRendering = true;
+        const promises = [...tickRenderPromises];
+        tickRenderPromises.length = 0;
+        await Promise.all(promises);
+        isRendering = false;
+
+        const {postJobs} = priorityTask;
+
+        flushJobs(postJobs);
+    });
+}
+
+
 const tickRenderPromises = [];
-let willPostRender = false;
+let willPostJobs = false;
 
 // 执行job，可能会setData
 // 如果setData，可能会同步触发子组件的setup，添加子组件的渲染任务
@@ -208,12 +305,15 @@ function flushRenderJobs(jobs: WXAHook._$updateData[]) {
         return;
     }
 
+
     const currentJobs = [...new Set(jobs)];
     jobs.length = 0;
 
     const instance = currentJobs[0].instance;
+    const oLength = tickRenderPromises.length;
 
-    instance.groupSetData(()=>{
+    isFlushingRenderJobs = true;
+    instance.groupSetData(() => {
         currentJobs.forEach((job) => {
             const res = job && job();
 
@@ -222,11 +322,30 @@ function flushRenderJobs(jobs: WXAHook._$updateData[]) {
             }
         });
     });
+    isFlushingRenderJobs = false;
+
+    const nLength = tickRenderPromises.length;
+
+    if (nLength > oLength) {
+        renderNums++;
+    }
+
+    // 一次性setData超过限制，中断
+    if (renderNums > maxRenderNums) {
+        renderNums = 0;
+        return;
+    }
 
     // 执行setData，会产生子组件的setup，执行子组件的setup
-    flushJobs(newTask.setupJobs);
+    flushSetupJobs(currentTask.setupJobs);
     // 执行由setup产生的setData
     flushRenderJobs(jobs);
+}
+
+function flushSetupJobs(jobs: WXAHook.IFunction[]) {
+    isFlushingSetupJobs = true;
+    flushJobs(jobs);
+    isFlushingSetupJobs = false;
 }
 
 function flushJobs(jobs: WXAHook.IFunction[]) {
@@ -243,13 +362,13 @@ function flushJobs(jobs: WXAHook.IFunction[]) {
 }
 
 export function queueRenderJobs(job: WXAHook._$updateData): void {
-    newTask.renderJobs.push(job);
+    currentTask.renderJobs.push(job);
 }
 
 export function queuePreJobs(job: WXAHook.IFunction): void {
-    newTask.preJobs.push(job);
+    currentTask.preJobs.push(job);
 }
 
 export function queuePostJobs(job: WXAHook.IFunction): void {
-    newTask.postJobS.push(job);
+    currentTask.postJobs.push(job);
 }

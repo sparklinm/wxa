@@ -138,7 +138,7 @@ function withHooks(
                         return;
                     }
 
-                    // console.log('diffedData', diffedData);
+                    console.log('[diffedData]', diffedData);
 
                     return new Promise<void>((resolve) => {
                         console.time('[setData]');

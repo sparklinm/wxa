@@ -14,13 +14,13 @@ import {
     usePageScroll,
     useTabItemTap,
     useReachBottom,
-    useParams
+    useParams,
+    useLoad
 } from "@wxa/hooks";
 import { getSongCategory } from "../../../service.js";
 import { getSongList, getSong } from "../../../store.js";
 
 const LIST_URL = "/pages/online/list/index";
-
 
 withHooks(
     () => {
@@ -28,36 +28,24 @@ withHooks(
         let [loading, setLoading] = useState([]);
         let [songList, setSongList] = useState([]);
         let [song, setSong] = useState(null);
-        let instance = useInstance()
+        let [prop1, setProp1] = useState("");
+        let [prop2, setProp2] = useState("");
+        let instance = useInstance();
 
+        useMemo(() => {
+            console.debug("(__init_index__)");
+        }, []);
 
-        useEffect(async () => {
+        useLoad(async () => {
             let res = await getSongCategory();
             res.forEach(item => {
                 item.url = `${LIST_URL}?type=${item.type}`;
             });
             setRanks(res);
             setLoading(false);
-
-            setTimeout(() => {
-                // console.log(instance.groupSetData);
-                // console.log(instance);
-
-                // instance.groupSetData(()=>{
-                //     instance.setData({
-                //         x :1
-                //     },()=>{
-                //         console.log(1);
-                //     })
-                //     instance.setData({
-                //         x :2
-                //     },()=>{
-                //         console.log(2);
-                //     })
-                // })
-            }, 2000);
-
-        }, []);
+            setProp1("3");
+            setProp2("4");
+        });
 
         useShow(() => {
             song = getSong();
@@ -70,7 +58,7 @@ withHooks(
         });
 
         return {
-            data: { ranks, loading, song, songList },
+            data: { ranks, loading, song, songList, prop1, prop2 },
             methods: {}
         };
     },
@@ -86,13 +74,16 @@ withHooks(
     "enablePullDownRefresh" : true,
     "usingComponents":{
       "custom-navigator": "../../../components/custom-navigator",
-      "player": "../../../components/player"
+      "player": "../../../components/player",
+      "empty-component-one": "../../../components/empty-component-one",
+      "empty-component-two": "../../../components/empty-component-two"
     }
 }
 </config>
 
 <template>
     <view class="container">
+
         <view class="rank-list">
             <view
                 class="rank-item"
@@ -104,6 +95,12 @@ withHooks(
                     text="{{item.text}}"
                 />
             </view>
+            <empty-component-one />
+            <empty-component-two />
+
+            <empty-component-one prop1="{{prop1}}" />
+            <empty-component-one prop1="{{prop1}}" />
+            <empty-component-one wx:if="{{prop2}}" prop2="{{prop2}}"/>
         </view>
         <loading hidden="{{!loading}}">
             加载中...

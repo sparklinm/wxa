@@ -1,0 +1,62 @@
+<script>
+import {
+    withHooks,
+    useState,
+    useEffect,
+    useMemo,
+    useCallback,
+    useInstance,
+    useShow,
+    usePullDownRefresh,
+    useShareAppMessage,
+    useShareTimeline,
+    useAddToFavorites,
+    usePageScroll,
+    useTabItemTap,
+    useReachBottom,
+    useParams
+} from "@wxa/hooks";
+import { router } from "@wxa/core";
+
+withHooks(
+    ({ prop1, prop2 }) => {
+        useMemo(() => {
+            console.debug("(__init_empty-component-two__)");
+        }, []);
+        return {
+            data: { prop1, prop2 },
+            methods: {}
+        };
+    },
+    {
+        properties: {
+            prop1: {
+                type: String,
+                value: ""
+            },
+            prop1: {
+                type: String,
+                value: ""
+            }
+        },
+        options: {
+            addGlobalClass: true
+        }
+    }
+);
+</script>
+
+<config>
+{
+    "component": true,
+    "usingComponents":{
+    }
+}
+</config>
+
+<template>
+    <view></view>
+</template>
+
+<style lang="scss">
+</style>

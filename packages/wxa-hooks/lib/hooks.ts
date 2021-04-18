@@ -185,8 +185,9 @@ function withHooks(
                 // console.timeEnd('setup');
                 this._$sourceData = JSON.parse(JSON.stringify(data));
 
-                // console.log('_$sourceData', this._$sourceData);
-                // console.log('---path---', this._$id);
+                // console.log('[_$sourceData]', this._$sourceData);
+                // console.log('[data]', JSON.parse(JSON.stringify(this.data)));
+                // console.log(`[${this._$id}]`, this);
 
                 queueRenderJobs(this._$updateData);
 
@@ -194,7 +195,6 @@ function withHooks(
 
                 // console.timeEnd('setup');
             };
-
             _$setup.id = this._$id;
             this._$setup = _$setup;
 
@@ -208,6 +208,13 @@ function withHooks(
         },
         attached() {
             queueSetupJobs(this._$setup, true);
+
+            // 自定义组件没有route属性
+            // 主动触发 useLoad
+
+            if (!this.route && this.onLoad) {
+                this.onLoad();
+            }
             // const parent = this.selectOwnerComponent() as WXAHook.componentInstance;
             // if (!parent) {
             //     return;

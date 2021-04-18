@@ -45,9 +45,8 @@ const maxRenderNums = 15;
 let willSetup = false;
 let isRendering = false;
 let isRenderTick = false;
-let isFlushingRenderJobs = false;
-let isFlushingSetupJobs = false;
 let isFlushingNormalRenderJobs = false;
+let isFlushPriorityRenderJobs = false;
 
 function nextTick(fn: WXAHook.IFunction) {
     Promise.resolve().then(() => {
@@ -82,12 +81,17 @@ function initTask() {
 }
 
 export function reomveInvalidTask(id: string): void {
+    console.log('detached', renderingTaskIndex, tasks);
+
     for (let i = renderingTaskIndex; i < tasks.length; i++) {
         const task = tasks[i];
         Object.keys(task).forEach((key) => {
-            tasks[key].forEach((fn, index) => {
-                if (fn.id === id) {
-                    tasks[key][index] = undefined;
+            if (key==='setupJobs') {
+                console.log(task[key].length);
+            }
+            task[key].forEach((fn, index) => {
+                if (fn && fn.id === id) {
+                    task[key][index] = undefined;
                 }
             });
         });
@@ -110,13 +114,7 @@ export function queueSetupJobs(
         // 当第一个setup执行时，后续无论是setup产生的setup
         // 或是setData产生的setup
         // 都只是单纯放入队列
-        if (isFlushingRenderJobs || isFlushingSetupJobs) {
-            queueSetup(job);
-        } else {
-            // 在最后一个setData，之后产生的setup
-            // 都放入到新任务队列中
-            queueSetupAndDeferRun(job);
-        }
+        queueSetup(job);
     } else {
         // 下一个tick执行同步代码中放入的所有setup
         // 用于setState时，放入的setup
@@ -145,6 +143,7 @@ function queueSetupAndDeferRun(job) {
         console.log('[one-task-start]');
         console.time('[one-task-duration]');
 
+
         flushSetupJobs(currentTask.setupJobs);
 
         tryRender();
@@ -166,11 +165,12 @@ function queueSetup(job) {
 }
 
 function tryRender() {
-    if (!isRendering) {
-        render();
-    } else {
-        isRenderTick = false;
-    }
+    // if (!isRendering) {
+    //     render();
+    // } else {
+    //     isRenderTick = false;
+    // }
+    render();
 }
 
 function autoNextRender() {
@@ -207,23 +207,30 @@ function continueRender() {
 
 // 如果实例本应被销毁，这里还存有实例的渲染，那实例不会被销毁
 async function render() {
-    // console.log(
-    //     'renderingTask',
-    //     renderingTaskIndex,
-    //     tasks[renderingTaskIndex],
-    //     tasks,
-    // );
+    console.log(
+        'renderingTask',
+        renderingTaskIndex,
+        tasks[renderingTaskIndex],
+        tasks,
+    );
 
+    renderingTaskIndex ++;
     renderingTask = tasks[renderingTaskIndex];
     currentTask = renderingTask;
 
     const {renderJobs} = renderingTask;
 
+    // setData 会导致子组件显示
+    // 而子组件useLoad中的setup需要在上一个afterRender后执行
+    // 所以这里放在前面
+    afterRender();
+
     isFlushingNormalRenderJobs = true;
     flushRenderJobs(renderJobs);
     isFlushingNormalRenderJobs = false;
 
-    afterRender();
+    isRenderTick = false;
+    renderNums = 0;
 }
 
 async function afterRender() {
@@ -234,13 +241,15 @@ async function afterRender() {
     willPostJobs = true;
 
     nextTick(async () => {
-        isRenderTick = false;
         willPostJobs = false;
 
+        console.log('[normal-render-start]');
         isRendering = true;
         const promises = [...tickRenderPromises];
         tickRenderPromises.length = 0;
-        await Promise.all(promises);
+        if (promises.length) {
+            await Promise.all(promises);
+        }
         isRendering = false;
 
         const {postJobs: normalPostJobS} = renderingTask;
@@ -248,10 +257,11 @@ async function afterRender() {
         const postJobs=[...priorityPostJobs, ...normalPostJobS];
         normalPostJobS.length = 0;
         priorityPostJobs.length = 0;
-
         flushJobs(postJobs);
 
-        autoNextRender();
+        console.log('[normal-render-completed]');
+
+        // autoNextRender();
     });
 }
 
@@ -259,11 +269,17 @@ async function afterRender() {
 async function priorityRender() {
     const {renderJobs} = currentTask;
 
+    isFlushPriorityRenderJobs = true;
     flushRenderJobs(renderJobs);
+    isFlushPriorityRenderJobs = false;
 
+    // 是wx:if产生的组件初始化
+    // 必定由父组件的setData导致
     if (isFlushingNormalRenderJobs) {
         currentTask = renderingTask;
     } else {
+        // 只会在新页面进入时触发
+        isRenderTick = false;
         afterPriorityRender();
     }
 }
@@ -276,18 +292,28 @@ async function afterPriorityRender() {
     willPostJobs = true;
 
     nextTick(async () => {
-        isRenderTick = false;
         willPostJobs = false;
 
         isRendering = true;
         const promises = [...tickRenderPromises];
         tickRenderPromises.length = 0;
-        await Promise.all(promises);
+        if (promises.length) {
+            await Promise.all(promises);
+        }
         isRendering = false;
 
         const {postJobs} = priorityTask;
-
         flushJobs(postJobs);
+
+        console.log('[page-first-render-completed]');
+
+        // 渲染正常队列中的任务
+        // renderingTask = tasks[renderingTaskIndex];
+
+        // if (renderingTask && renderingTask.renderJobs.length) {
+        //     isRenderTick = true;
+        //     render();
+        // }
     });
 }
 
@@ -312,7 +338,6 @@ function flushRenderJobs(jobs: WXAHook._$updateData[]) {
     const instance = currentJobs[0].instance;
     const oLength = tickRenderPromises.length;
 
-    isFlushingRenderJobs = true;
     instance.groupSetData(() => {
         currentJobs.forEach((job) => {
             const res = job && job();
@@ -322,18 +347,19 @@ function flushRenderJobs(jobs: WXAHook._$updateData[]) {
             }
         });
     });
-    isFlushingRenderJobs = false;
 
     const nLength = tickRenderPromises.length;
 
-    if (nLength > oLength) {
-        renderNums++;
-    }
+    if (!isFlushPriorityRenderJobs) {
+        if (nLength > oLength) {
+            renderNums++;
+        }
 
-    // 一次性setData超过限制，中断
-    if (renderNums > maxRenderNums) {
-        renderNums = 0;
-        return;
+        // 一次性setData超过限制，中断
+        if (renderNums >= maxRenderNums) {
+            renderNums = 0;
+            return;
+        }
     }
 
     // 执行setData，会产生子组件的setup，执行子组件的setup
@@ -343,9 +369,7 @@ function flushRenderJobs(jobs: WXAHook._$updateData[]) {
 }
 
 function flushSetupJobs(jobs: WXAHook.IFunction[]) {
-    isFlushingSetupJobs = true;
     flushJobs(jobs);
-    isFlushingSetupJobs = false;
 }
 
 function flushJobs(jobs: WXAHook.IFunction[]) {

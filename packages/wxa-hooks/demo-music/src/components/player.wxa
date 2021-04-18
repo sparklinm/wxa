@@ -34,6 +34,7 @@ withHooks(
         let [curIndex, setCurIndex] = useState(0);
         let [totalSeconds, setTotalSeconds] = useState(0);
         let [playStatus, setPlayStatus] = useState("none");
+        let [x, setX] = useState('')
         let musicRef = useRef();
         let timerRef = useRef();
 
@@ -44,6 +45,7 @@ withHooks(
                 );
                 setCurIndex(index);
                 setCurSong(song);
+                // setX(new Array(3000000).fill(Math.random()).join(''))
             },
             [song]
         );
@@ -86,7 +88,6 @@ withHooks(
         );
 
         useShow(() => {
-            console.log("---------player-show------");
         });
 
         function handleSongStatus(playStatus) {
@@ -212,7 +213,7 @@ withHooks(
         }
 
         return {
-            data: { song: curSong, showBtnPause, seconds, totalSeconds },
+            data: { song: curSong, showBtnPause, seconds, totalSeconds,x },
             methods: {
                 play,
                 pause,

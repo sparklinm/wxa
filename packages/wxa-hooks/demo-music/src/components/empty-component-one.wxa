@@ -21,9 +21,11 @@ import { router } from "@wxa/core";
 
 withHooks(
     ({ prop1, prop2 }) => {
+        let [state1,setState1] = useState(prop1)
 
         useLoad(()=>{
-            console.info('(__empty_compontent_load__)');
+            console.debug('(__empty_compontent_one_load__)');
+            setState1('empty_compontent_one_load_state')
         })
 
         useMemo(() => {
@@ -34,7 +36,7 @@ withHooks(
             () => {
                 if (prop1) {
                     console.debug(
-                        "(__init_empty-component-one_prop1__)",
+                        "(__empty-component-one_prop1__)",
                         prop1
                     );
                 }
@@ -46,7 +48,7 @@ withHooks(
             () => {
                 if (prop2) {
                     console.debug(
-                        "(__init_empty-component-one_prop2__)",
+                        "(__empty-component-one_prop2__)",
                         prop2
                     );
                 }
@@ -54,7 +56,7 @@ withHooks(
             [prop2]
         );
         return {
-            data: { prop1, prop2 },
+            data: { prop1, prop2, state1 },
             methods: {}
         };
     },

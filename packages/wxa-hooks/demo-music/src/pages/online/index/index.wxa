@@ -37,10 +37,16 @@ withHooks(
         }, []);
 
         useLoad(async () => {
+            console.debug('(__index_load__)');
+
+            setProp1('index_load_prop1')
+            
             let res = await getSongCategory();
             res.forEach(item => {
                 item.url = `${LIST_URL}?type=${item.type}`;
             });
+
+            console.debug('(__index_fetch_completed__)');
             setRanks(res);
             setLoading(false);
             setProp1("3");
@@ -48,6 +54,10 @@ withHooks(
         });
 
         useShow(() => {
+            console.debug('(__index_show__)');
+
+            setProp1('index_load_prop11')
+
             song = getSong();
             songList = getSongList();
             if (!song) {
